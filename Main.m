@@ -1,6 +1,7 @@
 %--Josh Bevan 2014
 %--1D Scalar Conservation Eqn solution using Discontinuous Galerkin
 clear all
+close all
 tau=2*pi();
 
 %--Here we attempt to solve the 1D scalar conservation eqn of the form:
@@ -22,16 +23,15 @@ tau=2*pi();
 N=2;
 
 %--Discretize the domain into K elements with K+1 nodes
-K=20;
+K=16;
 xNode=0:1/K:1;
 deltax = diff(xNode);
 deltaxM = repmat(deltax,N,1);  %Repeat deltax for the N basis functions
 %All the nodes, note their are repeats since nodes have a coincident
 %brother from an adjacent element, except at the boundaries
 xh = reshape(sort([xNode,xNode(2:end-1)]),N,K)';
+u= sin(tau.*xh);
 
-xf = 0:1/100:1;
-u= sin(tau.*xf);
 
 %--According to Cockburn,Shu 2001 Eqn 2.2 let uh(.,0) be computed by
 %\int uh \phi = \int u0 \phi for each element (xj-1/2 < x < xj=1/2)
@@ -51,23 +51,14 @@ LHSIntegrals = [1/3 1/6;
 %LHSIntegrals * BasisWeights = ExactRHS / deltax
 BasisWeights = LHSIntegrals\(ExactRHS./deltaxM);
 
-%--Mapping uh0 values to the appropriate element nodes
-uh = BasisWeights';
-
-% plot(xf,u,'b')
-% hold on
-% plot(xh',uh','r')
-
 %--Now that we have u0 we can begin explicit time stepping (forward Euler)
 %with the semi-discrete form of the PDE.
 %--Because we have a linear flux function all the classic monotone flux
 %schemes reduce to the simple upwind flux i.e. g(v-(x),g(v+(x))=v-(x)
 
-deltaT= .001;
-
 %--Let's assemble our semi-discrete stencil, assuming the BasisWeight 
 %vector is of the form [a1_j a2_j a1_j+1 a2_j+1 ... a1_K a2_K]
-UpwindFlux = [1 0 0;
+UpwindFlux = [1 0  0;
               0 0 -1];
 RHSIntegrals = [0 -1/2 -1/2;
                 0  1/2  1/2];
@@ -78,18 +69,48 @@ SemiMatrix = zeros(N*K);
 for i=1 : size(Stencil,1) : size(SemiMatrix,2)-(size(Stencil,1)+1)
     SemiMatrix(i:i-1+size(Stencil,1),i:i-1+size(Stencil,2))=Stencil;
 end
-SemiMatrix = circshift(SemiMatrix, [0 -1]);
+SemiMatrix = circshift(SemiMatrix, [0 -1]); %Apply periodic BC
 SemiMatrix(end+1-size(Stencil,1):end,end+1-size(Stencil,2):end)=Stencil;
 SemiMatrix = SemiMatrix./deltax(1);
 
-xh = reshape(xh',N*K,1);
-BasisWeights = reshape(BasisWeights',N*K,1);
+BasisWeights = reshape(BasisWeights,N*K,1);
+cats = BasisWeights;
 
 %--Discretize in time and plot
-for t= 0:deltaT:1
+deltaT= .0001;
+saveT = 0.01;
+nsaveT = floor(saveT/deltaT);
+endT = 10;
+nT = floor(endT/deltaT);
+NormFreq = 100;
+saved = zeros((nT/nsaveT)+1,K*N);
+i=0;
+norm2 = [];
+for t= 0:1:nT
     BasisWeights_dt = SemiMatrix*BasisWeights;
     BasisWeights = BasisWeights+(BasisWeights_dt.*deltaT);
-    plot(reshape(xh,N,K),reshape(BasisWeights,N,K),'r')
-    pause(0.0001)
+    if t/nsaveT==floor(t/nsaveT)
+        if i/NormFreq == floor(i/NormFreq)
+            norm2 = [norm2 sum(([u(1,1) u(:,2)']'-BasisWeights([1 2:2:end])).^2)];
+        end
+        i= i+1;
+        saved(i,:)=BasisWeights;
+    end
 end
-    
+
+saved = reshape(saved',N,K,length(saved));
+j=0;
+for i=1:length(saved)
+    plot(xh',saved(:,:,i))
+    axis([0 1 -1.5 1.5])
+    if (i-1)/NormFreq == floor((i-1)/NormFreq)
+        j=j+1;
+    end
+    text(1.02,0.1,'L2-Norm')
+    text(1.02,0,num2str(norm2(j)));
+    text(1.02,-0.2,'RMS')
+    text(1.02,-.3,num2str(rms(reshape(saved(2,:,i),K,1))));
+    text(1.02,1.1,'Time')
+    text(1.02,1,num2str((i-1)*saveT));
+    pause(.01)
+end
