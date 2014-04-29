@@ -37,7 +37,6 @@ u= sin(tau.*xh);
 %\int uh \phi = \int u0 \phi for each element (xj-1/2 < x < xj=1/2)
 %--We can explicitly define a formula for the value of the RHS 
 %ExactRHSN = \int u0 \phiN
-%fliplr() is used here to evaluate xh at the other element node
 ExactRHS(1,:)= (tau*deltax.*cos(tau.*xNode(1:end-1))+sin(tau.*xNode(1:end-1))-sin(tau.*xNode(2:end)))./(4*pi()^2.*(deltax));
 ExactRHS(2,:)= -(tau*deltax.*cos(tau.*xNode(2:end))+sin(tau.*xNode(1:end-1))-sin(tau.*xNode(2:end)))./(4*pi()^2.*(deltax));
 
