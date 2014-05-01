@@ -1,0 +1,130 @@
+\documentclass[letterpaper]{article}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+
+\title{Intro to DG Methods for 1D Scalar Conservation Laws}
+
+\author{Josh Bevan}
+
+\date{\today}
+
+\begin{document}
+\maketitle
+%------------------------------------
+\begin{abstract}
+Discontinuous Galerkin methods are excellent tools for allowing high-order accuracy solutions of both linear and non-linear PDEs, including those with non-smooth soltuions. This paper presents an introduction to the theory and application specifics necessary to apply DG to 1D conservation laws.
+\end{abstract}
+
+%------------------------------------
+\section{Introduction}
+A 1D scalar conservation law can be described by a PDE of the form in \eqref{scalconsv}
+
+\begin{equation}\label{scalconsv}
+\frac{\partial u}{\partial t} + \frac{\partial f(u)}{\partial x} = 0
+\end{equation}
+where $u(x,t)$ is a conserved quantity of interest and $f(u)$ is a flux function that describes the flow of the conserved quantity. $f(u)$ could be a non-linear function of $u$ in which case there may not exist an analytical solution to \eqref{scalconsv}. Indeed, the solution may be non-smooth and so a traditional Finite Element Method (FEM) approach will encounter difficulties capturing any discontinuities in the solution.
+
+A Finite Volume Method (FVM) is able to handle dicsontinuous solutions, however diffulty exists in extending it to high-order accuracy on unstructured grids due to the neceesary extended computational stencil. A Finite Difference Method (FDM) does not enforce conservation and also is difficult to implement on unstructured grids.
+
+Discontinuous Galerkin (DG) allows for high-order accuracy on unstructured grids while accomodating non-smooth solutions. The DG method will be derived for 1D conservation laws and we will go into the specifics necessary for implementation.
+
+%------------------------------------
+\section{DG Formulation}
+\subsection{Weak Formulation}
+If we imagine some arbitrary test function $\phi(x)$ we should expect that our choice has no effect on our ability to solve \eqref{scalconsv} as the two have nothing to do with each other. To be more precise we should expect that the two are orthogonal, that is the inner product of the two is zero on some interval $[a,b]$
+
+\begin{equation}\label{innerprod}
+(f,g) = \int_a^b \! f(x)g(x) \, \mathrm{d}x = 0
+\end{equation}
+
+Enforcing this expectation on \eqref{scalconsv} over a (yet) ambiguous domain yields
+
+\begin{equation}\label{WeakFormGlobal}
+\int\! \frac{\partial u}{\partial t} \phi \,\mathrm{d}x + \int\! \frac{\partial f(u)}{\partial x} \phi \,\mathrm{d}x = 0
+\end{equation}
+
+In contrast to the FEM, the domain is broken into K independent elements each with a domain $I_k \in [x_{k-^1\!/_2},x_{k+^1\!/_2}]$. Instead of placing a global orthoganality requirement, we require local orthogonality on each element
+
+\begin{equation}\label{WeakFormExactIntermed}
+\int_{I_k}\! \frac{\partial u}{\partial t} \,\phi \,\mathrm{d}x + \int_{I_k}\! \frac{\partial f(u)}{\partial x} \,\phi \,\mathrm{d}x = 0
+\end{equation}
+
+One downside of the current form of \eqref{WeakFormExactIntermed} is that we msut place certain smoothness requirements on the flux function to ensure $\frac{\partial f(u)}{\partial x}$ is defined. We can relax these requirements by integrating the right term of \eqref{WeakFormExactIntermed} by parts (recall: $\int uv \,\mathrm{d}x = uv| - \int u'v \,\mathrm{d}x$ where we choose $u=\phi$ and $v'=\frac{\partial f(u)}{\partial x}$).
+
+\begin{equation}\label{WeakFormExact}
+\int_{I_k}\! \frac{\partial u}{\partial t} \,\phi \,\mathrm{d}x + [f(u)\phi] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -  \int_{I_k}\! f(u) \,\frac{\partial \phi}{\partial x} \,\mathrm{d}x = 0
+\end{equation}
+
+%----------
+\subsection[Polynomial Approximation] {Polynomial Approximation\footnote{The slightly unusual notation of functions of order M is used throughout this section, where more traditionally N is used. This is done to permit a consistency of notation for the approximate solution that will be useful later on when N is used for another purpose.} }
+
+The exact solution $u(x,t)$ may not permit an analytical representation and so most be approximated in some way. A natural and easy choice is a polynomial approximation of order M. A natural choice for the basis for the polynomials is the monomials, $\psi(x) = x^{M-1}$. These are satisfactory for low orders, but we encounter a problem at higher orders.
+
+If we normalize the monomial basis with respect to the $l^2$ norm $\|f\|=\sqrt{(f,f)}$ we arrive at $\bar{\psi}_m(x) = \sqrt{2m+1}x^m$. If the inner product of two basis functions is 0, they are orthogonal and therefore linearly independent. If many of our basis functions end up linearly dependent it is difficult to reconstruct the solution approximation.
+
+Consider the inner product of two adjacent basis functions in our normalized monomial basis:
+
+\begin{equation}\label{condmono}
+(\bar{\psi}_{m-1},\bar{\psi}_m) = \int_0^1 \! \sqrt{2m-1}x^{m-1}\sqrt{2m+1}x^{m} \, \mathrm{d}x = \sqrt{1-\frac{1}{4m^2}}
+\end{equation}
+It is easy to see that for even moderate values of $n$ in \eqref{condmono} the inner product is close to 1, indicating near linear dependence between basis functions.
+
+It is therfore important to choose a polynomial basis of (ideally) orthogonal functions so that the solution approximation is well conditioned. One good choice is the Legendre polynomials $P_m$ which are orthogonal on the interval $[-1,1]$ (these are defined as the solutions to the Sturm–Liouville equation for a weighting function $w(x)=1$). They can be defined using the recurrence formula \eqref{LegRecur} or the explicit Rodrigue's formula \eqref{LegRodrig}
+
+\begin{equation}\label{LegRecur}
+P_m(x) = \frac{(2m-1)xP_{m-1}(x) - (m-1)P_{m-2}(x)}{m}
+\end{equation}
+
+\begin{equation}\label{LegRodrig}
+P_m(x) = \frac{1}{2^m m!}\frac{\mathrm{d}^2}{\mathrm{d}x^m}\left[(x^2-1)^m\right]
+\end{equation}
+Orhtogonality means that the inner product of two Legendre polynomials is zero if they are not of the same order, this can be expressed using the Kronecker product as
+\begin{equation}\label{LegInnerProd}
+(P_n,P_m) = \int_{-1}^1 \! P_n P_m \, \mathrm{d}x = \delta_{nm} \left(\frac{2}{2m+1}\right)
+\end{equation}
+
+Note that we could use a similiar orthonormal version of the basis such that every inner product is simply the Kronecker product, however one nice property of the current form is that $P_m(1)=1$ and $P_m(-1)=(-1)^m$. In the orthonormal case we would need to explicitly evaluate $P_m(x)$ at the endpoints for every m (it is worth noting it is important to be clear what one means by normalization in this case: orthonormal with respect to the $l^2$ norm or normalized with respect to the maximal value of $P_m(x)$ on $[-1,1]$).
+
+Using our orthogonal Legendre polynomial basis we can now construct an approximating solution $v$ for arbritrary order M using basis functions $\overset{m}{\psi}(x) \in P_m$ and basis weights $\overset{m}{a}(t)$
+\begin{equation}\label{SolApprox}
+v = \sum_{m=0}^M \overset{m}{a}(t)\overset{m}{\psi}(x)
+\end{equation}
+so that \eqref{WeakFormExact} takes on the form
+\begin{equation}\label{WeakFormApprox}
+\int_{I_k}\! \frac{\partial v}{\partial t} \,\phi \,\mathrm{d}x + [f(v)\phi] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -  \int_{I_k}\! f(v) \,\frac{\partial \phi}{\partial x} \,\mathrm{d}x = 0
+\end{equation}
+If we examine the simple case of a linear flux function $f(v) = v$, substitute \eqref{SolApprox} into \eqref{WeakFormApprox}, and bring outside the basis weights which do not depend on the spatial integral we get:
+\begin{equation}\label{WeakFormLinearIntermed}
+\sum_{m=0}^M \left[ \frac{\mathrm{d}\overset{m}{a}}{\mathrm{d} t} \int_{I_k}\! \overset{m}{\psi} \,\phi \,\mathrm{d}x \right] + [f(v)\phi] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -  \int_{I_k}\! f(v) \,\frac{\partial \phi}{\partial x} \,\mathrm{d}x = 0
+\end{equation}
+
+%----------
+\subsection{Flux Functions}
+Though the distinction between \eqref{WeakFormGlobal} and \eqref{WeakFormExactIntermed} may seem pedantic, it is important to note that the locally defined form of \eqref{WeakFormExactIntermed} decouples the solution into K equations. This improves the locallity of the solution (particularly important in non-elliptic PDEs), but presents several challenges not present in FEM.
+
+First, if \eqref{WeakFormExact} yields local equations independent of each other how do we recover a global solution? Secondly, the solution is multiply defined at the point where adjacent elements overlap (e.g. $v_k(x_{k+^1\!/_2})$ and $v_{k+1}(x_{k-^1\!/_2})$ ), what is $f(v)$ at these points?
+
+Both questions are answered by replacing $f(v)$ with a numerical flux function $g(x) = g(v^-(x),v^+(x))$ at the endpoints of each element, where we define $v^-(x) = \underset{c \to 0}{lim} \,v(x-c)$ and $v^+(x) = \underset{c \to 0}{lim} \,v(x+c)$. Essentially $v^-(x),v^+(x) \;x \in I_k$ correspond to the left and right values of $v_k(x)$ in a particular element $k$, respectively.
+
+The classic approach to choosing a numerical flux function for a DG method is to ensure that in the case of the $0^{th}$ order DG method (which reduces to a FVM approach) that it is in the class of monotonic flux functions (e.g. Lax-Friedrichs, Godunov, etc). In the case of a linear flux $f(v) = v$ (or more generally in advection-dominated problems) a simple choice is the upwind flux $g(v^-,v^+) = v^- \;for\; v>0$.
+
+%----------
+\subsection{Galerkin Approach}
+We have as yet left the definition of the test function $\phi(x)$ ambiguous. If we choose to use the Galerkin approach then $\phi_n(x) \in P_n$ and so therefore $\psi_m(x) = \phi_n(x) \;if\; m=n$. This is particularly useful when we consider the integral of products of the approximate solution and the test function as these will be zero everywhere except for when they the two functions are ofd the same order.
+
+Applying the Galerkin approach to the linear case in \eqref{WeakFormLinearIntermed} and using the upwind numerical flux, yields
+
+\begin{equation}\label{WeakFormLinearIntermed2}
+\sum_{m=0}^M \left[ \frac{\mathrm{d}\overset{m}{a}}{\mathrm{d} t} \int_{I_k}\! \overset{m}{\psi} \, \overset{n}{\phi} \,\mathrm{d}x \right] + [v^-\overset{n}{\phi}] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -  \int_{I_k}\! f(v) \,\frac{\partial \overset{n}{\phi}}{\partial x} \,\mathrm{d}x = 0 \;\;\; for \; 0 \leq n \leq N
+\end{equation}
+applying the relationship found in \eqref{LegInnerProd} along with the relation for $P_n(\pm 1)$
+
+\begin{equation}\label{WeakFormLinear}
+\frac{\mathrm{d}\overset{n}{a}}{\mathrm{d} t}\left(\frac{2}{2n+1}\right) + [v^-\overset{n}{\phi}] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -  \int_{I_k}\! f(v) \,\frac{\partial \overset{n}{\phi}}{\partial x} \,\mathrm{d}x = 0 \;\;\; for \; 0 \leq n \leq N
+\end{equation}
+
+\end{document}
