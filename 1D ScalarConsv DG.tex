@@ -52,7 +52,7 @@ One downside of the current form of \eqref{WeakFormExactIntermed} is that we mus
 	\begin{equation}\label{WeakFormExact}
 	\int_{I_k}\! \frac{\partial u}{\partial t} \,\phi \,\mathrm{d}x +
 	[f(u)\phi] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -
-	\int_{I_k}\! f(u) \,\frac{\partial \phi}{\partial x} \,\mathrm{d}x = 0
+	\int_{I_k}\! f(u) \,\frac{\mathrm{d} \phi}{\mathrm{d} x} \,\mathrm{d}x = 0
 	\end{equation}
 
 %----------
@@ -94,13 +94,13 @@ Substituting \eqref{SolApprox}, \eqref{WeakFormExact} takes on the form
 	\begin{equation}\label{WeakFormApprox}
 	\int_{I_k}\! \frac{\partial v}{\partial t} \,\phi \,\mathrm{d}x +
 	[f(v)\phi] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -
-	\int_{I_k}\! f(v) \,\frac{\partial \phi}{\partial x} \,\mathrm{d}x = 0
+	\int_{I_k}\! f(v) \,\frac{\mathrm{d} \phi}{\mathrm{d} x} \,\mathrm{d}x = 0
 	\end{equation}
 If we substitute \eqref{SolApprox} into \eqref{WeakFormApprox} and bring outside the basis weights which do not depend on the spatial integral we get:
-	\begin{equation}\label{WeakFormLinearIntermed}
+	\begin{equation}\label{WeakFormApproxIntermed}
 	\sum_{m=0}^M \left[ \frac{\mathrm{d}\overset{m}{a}}{\mathrm{d} t} \int_{I_k}\! \overset{m}{\psi} \,\phi \,\mathrm{d}x \right] + 
 	[f(v)\phi] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -
-	 \int_{I_k}\! f(v) \,\frac{\partial \phi}{\partial x} \,\mathrm{d}x = 0
+	 \int_{I_k}\! f(v) \,\frac{\mathrm{d} \phi}{\mathrm{d} x} \,\mathrm{d}x = 0
 	\end{equation}
 
 %----------
@@ -117,20 +117,44 @@ The classic approach to choosing a numerical flux function for a DG method is to
 \subsection{Galerkin Approach}
 We have as yet left the definition of the test function $\phi(x)$ ambiguous. If we choose to use the Galerkin approach then $\phi_n(x) \in P_n$ and so therefore $\psi_m(x) = \phi_n(x) \;if\; m=n$. This is particularly useful when we consider the integral of products of the approximate solution and the test function as these will be zero everywhere except for when they the two functions are the same order.
 
-Applying the Galerkin approach to the weak form in \eqref{WeakFormApprox}, and applying the numerical flux at the endpoints yields
-	\begin{equation}\label{WeakForm}
+Applying the Galerkin approach to the weak form in \eqref{WeakFormApproxIntermed}, and applying the numerical flux at the endpoints yields
+	\begin{equation}\label{WeakFormNumFlux}
 	\sum_{m=0}^M \left[ \frac{\mathrm{d}\overset{m}{a}}{\mathrm{d} t} \int_{I_k}\! \overset{m}{\psi} \, \overset{n}{\phi} \,\mathrm{d}x \right] + 
 	[g(v^-,v^+) \; \overset{n}{\phi}] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -  
-	\int_{I_k}\! f(v) \,\frac{\partial \overset{n}{\phi}}{\partial x} \,\mathrm{d}x = 0
+	\int_{I_k}\! f(v) \,\frac{\mathrm{d} \overset{n}{\phi}}{\mathrm{d} x} \,\mathrm{d}x = 0
 	\;\;\; for \; 0 \leq n \leq N
 	\end{equation}
-applying the relationship found in \eqref{LegInnerProd} along with the relation for $P_n(\pm 1)$ for the simple case of a linear flux function $f(v) = v$
-	\begin{equation}\label{WeakFormLinear}
-	\frac{\mathrm{d}\overset{n}{a}}{\mathrm{d} t}\left(\frac{2}{2n+1}\right) + 
-	\sum_{m=0}^M \left[ \overset{m}{a}_k(t) - \overset{m}{a}_{k-1}(t)(-1)^m \right] -
-	\int_{I_k}\! f(v) \,\frac{\partial \overset{n}{\phi}}{\partial x} \,\mathrm{d}x = 0 \;\;\; for \; 0 \leq n \leq N
+applying the relationship found in \eqref{LegInnerProd} along with the relation for $P_n(\pm 1)$
+	\begin{gather}\label{WeakFormNumFluxIntermed}
+	\frac{\mathrm{d}\overset{n}{a}}{\mathrm{d} t}\left(\frac{2}{2n+1}\right)
+	+ g(\Sigma \overset{m}{a}_k,\Sigma \overset{m}{a}_{k+1}(-1)^m) - g(\Sigma \overset{m}{a}_{k-1},\Sigma \overset{m}{a}_{k}(-1)^m) (-1)^m\\
+	- \int_{I_k}\! f(v) \,\frac{\mathrm{d} \overset{n}{\phi}}{\mathrm{d} x} \,\mathrm{d}x = 0
+	\;\;\; for \; 0 \leq n \leq N \notag
+	\end{gather}
+
+%----------
+\subsection{Legendre Derivative Relations}
+Ideally we would like to analytically calculate all integrands to avoid the need for numerical quadrature. The last remaining integrand is the last term in \eqref{WeakFormNumFluxIntermed} involving the product of the flux with the derivative of the test function. Let's start with finding a closed form expression for the derivative.
+
+According to Quarteroni (1988) the derivative of a function can be represented using Legendre functions by
+	\begin{gather*}\label{DerivativeLeg}
+	f'(x) = \sum_{b=0}^\infty \hat{f}_b L_b(x)\\
+	\hat{f}_b = 2b+1 \sum_{\underset{p+b odd}{p=b+1}}^\infty \hat{f}_p\\
+	\hat{f}_p = (p+1/2) (f,L_p)
+	\end{gather*}
+
+If we perform this series of operations on $f=\overset{n}{\phi}(x)$ we can exploit orthogonality to see that $\hat{f}_p$ is only non-zero when $p=n$, and becomes 1 at this value of p. Furthermore $p$ can only equal $n$ for values of b that are odd (if n is even) and vice versa. If we permit slightly non-standard notation for a sum in reverse order we can succinctly write
+	\begin{equation}\label{WeakFormNumFlux}
+	\overset{n}{\phi}(x)' = \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x)
 	\end{equation}
 
-
-
+This relation does not necessarily allow us to avoid the integral unless we can say something more about the structure of $f(v)$. If it has the structure of a linear combination of Legendre functions that we can again exploit orthogonality to analytically calculate the integrand. We shall examine this for the case of a linear flux.
+%----------
+\subsection{Linear Case}
+for the simple case of a linear flux function $f(v) = v$
+	\begin{equation}\label{WFLinearIntermed}
+	\frac{\mathrm{d}\overset{n}{a}}{\mathrm{d} t}\left(\frac{2}{2n+1}\right) + 
+	\sum_{m=0}^M \left[ \overset{m}{a}_k(t) - \overset{m}{a}_{k-1}(t)(-1)^m \right] -
+	\int_{I_k}\! f(v) \,\frac{\mathrm{d} \overset{n}{\phi}}{\mathrm{d}x} \,\mathrm{d}x = 0 \;\;\; for \; 0 \leq n \leq N
+	\end{equation}
 \end{document}
