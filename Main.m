@@ -99,6 +99,14 @@ end
 
 saved = reshape(saved',N,K,length(saved));
 j=0;
+
+h=figure;set(gcf, 'Color','white')
+nFrames = length(saved);
+vidObj = VideoWriter('1DConvDG.avi');
+vidObj.Quality = 100;
+vidObj.FrameRate = floor(nFrames/(2*endT));
+open(vidObj);
+
 for i=1:length(saved)
     plot(xh',saved(:,:,i))
     axis([0 1 -1.5 1.5])
@@ -111,5 +119,9 @@ for i=1:length(saved)
     text(1.02,-.3,num2str(rms(reshape(saved(2,:,i),K,1))));
     text(1.02,1.1,'Time')
     text(1.02,1,num2str((i-1)*saveT));
-    pause(.01)
+    writeVideo(vidObj, getframe(h));
+    %pause(.01)
 end
+
+close(gcf)
+close(vidObj);

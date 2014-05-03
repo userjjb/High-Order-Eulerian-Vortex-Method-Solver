@@ -7,7 +7,7 @@ clc
 Globals1D;
 
 % Order of polymomials used for approximation 
-N = 3;
+N = 2;
 alpha = 1; %control central flux - upwind flux
 
 % Generate simple 1D mesh
@@ -34,6 +34,7 @@ TimeTol=dt*1.05;   %How close mod(time,LogTime) should be to 0
 [u,saved] = Advec1D(u,FinalTime,LogTime,TimeTol,alpha);
 beep;
 
+nT=length(saved);
 for i=2:nT
     plot(x,saved(:,:,i),'o-')
     axis([0 2 -1.2 1.2])
