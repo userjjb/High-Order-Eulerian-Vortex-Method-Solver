@@ -4,7 +4,6 @@
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{graphicx}
-\usepackage[colorinlistoftodos]{todonotes}
 
 \title{Intro to DG Methods for 1D Scalar Conservation Laws}
 
@@ -84,11 +83,16 @@ Orthogonality means that the inner product of two Legendre polynomials is zero i
 
 Note that we could use a similar orthonormal version of the basis such that every inner product is simply the Kronecker product, however one nice property of the current form is that $P_m(1)=1$ and $P_m(-1)=(-1)^m$. In the orthonormal case we would need to explicitly evaluate $P_m(x)$ at the endpoints for every m (it is important to be clear with what one means by normalization in this case: orthonormal with respect to the $l^2$ norm or normalized with respect to the maximal value of $P_m(x)$ on $[-1,1]$).
 
-Using our orthogonal Legendre polynomial basis we can now construct an approximating solution $v$ for arbitrary order M using basis functions $\overset{m}{\psi}(x) \in P_m$ and basis weights $\overset{m}{a}(t)$
-	\begin{equation}\label{SolApprox}
-	v = \sum_{m=0}^M \overset{m}{a}(t)\overset{m}{\psi}(\tilde{x})
+The Legendre polynomials are orthogonal on the domain $[-1,1]$ however we would like to use them on the domain of our element. We can define a mapping that will transform the domain of the element to that of the Legendre polynomials, $\tilde{x} = \frac{2(x-x_{k-^1\!/_2})}{x_{k+^1\!/_2}-x_{k-^1\!/_2}}-1$ to transform $I_k$ to $[-1,1]$. Using this we can define a variant of the shifted Legendre polynomials such that $\tilde{P}_m(x) = P_m(\tilde{x}(x))$. The newly defined shifted Legendre polynomials are now orthogonal over $I_k$ where $\Delta x = x_{k+^1\!/_2}-x_{k-^1\!/_2}$ and the inner product found in \eqref{LegInnerProd} becomes
+	\begin{equation}\label{ShiftLegInnerProd}
+	(\tilde{P}_n,\tilde{P}_m) = \int_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} \! P_n(\tilde{x}) P_m(\tilde{x}) \, \mathrm{d}\tilde{x} = \delta_{nm} \left(\frac{\Delta x}{2m+1}\right)
 	\end{equation}
-where we define the mapping $\tilde{x} = \frac{2(x-x_{k-^1\!/_2})}{x_{k+^1\!/_2}-x_{k-^1\!/_2}}-1$ to transform $I_k$ to $[-1,1]$.
+
+Using our orthogonal Legendre polynomial basis we can now construct an approximating solution $v$ for arbitrary order M using basis functions $\overset{m}{\psi}(x) \in \tilde{P}_m$ and basis weights $\overset{m}{a}(t)$
+	\begin{equation}\label{SolApprox}
+	v = \sum_{m=0}^M \overset{m}{a}(t)\overset{m}{\psi}(x)
+	\end{equation}
+
 
 Substituting \eqref{SolApprox}, \eqref{WeakFormExact} takes on the form
 	\begin{equation}\label{WeakFormApprox}
@@ -107,26 +111,26 @@ If we substitute \eqref{SolApprox} into \eqref{WeakFormApprox} and bring outside
 \subsection{Flux Functions}
 Though the distinction between \eqref{WeakFormGlobal} and \eqref{WeakFormExactIntermed} may seem pedantic, it is important to note that the locally defined form of \eqref{WeakFormExactIntermed} decouples the solution into K equations. This improves the locallity of the solution (particularly important in non-elliptic PDEs), but presents several challenges not present in FEM.
 
-First, if \eqref{WeakFormExact} yields local equations independent of each other how do we recover a global solution? Secondly, the solution is multiply defined at the point where adjacent elements overlap (e.g. $v_k(\tilde{x}(x_{k+^1\!/_2}))$ and $v_{k+1}(\tilde{x}(x_{k-^1\!/_2}))$\;), what is $f(v)$ at these points?
+First, if \eqref{WeakFormExact} yields local equations independent of each other how do we recover a global solution? Secondly, the solution is multiply defined at the point where adjacent elements overlap (e.g. $v_k(x_{k+^1\!/_2})$ and $v_{k+1}(x_{k-^1\!/_2})$\;), what is $f(v)$ at these points?
 
-Both questions are answered by replacing $f(v)$ with a numerical flux function $g(x) = g(v^-(\tilde{x}),v^+(\tilde{x}))$ at the endpoints of each element, where we define $v^-(x) = \underset{c \to 0}{lim} \,v(x-c)$ and $v^+(x) = \underset{c \to 0}{lim} \,v(x+c)$. Essentially $v^+(\tilde{x}(x_{k-^1\!/_2}))$ and $v^-\tilde{x}((x_{k+^1\!/_2}))$ $x \in I_k$ correspond to the left and right values of $v_k(\tilde{x}(x))$ in a particular element $k$, respectively.
+Both questions are answered by replacing $f(v)$ with a numerical flux function $g(x) = g(v^-(x),v^+(x))$ at the endpoints of each element, where we define $v^-(x) = \underset{c \to 0}{lim} \,v(x-c)$ and $v^+(x) = \underset{c \to 0}{lim} \,v(x+c)$. Essentially $v^+(x_{k-^1\!/_2})$ and $v^-(x_{k+^1\!/_2})$ $x \in I_k$ correspond to the left and right values of $v_k(x)$ in a particular element $k$, respectively.
 
 The classic approach to choosing a numerical flux function for a DG method is to ensure that in the case of the $0^{th}$ order DG method (which reduces to a FVM approach) that it is in the class of monotonic flux functions (e.g. Lax-Friedrich, Godunov, etc). In the case of a linear flux $f(v) = cv$ (or more generally in advection-dominated problems) a simple choice is the upwind flux $g(v^-,v^+) = cv^- \;for\; c>0$.
 
 %----------
 \subsection{Galerkin Approach}
-We have as yet left the definition of the test function $\phi(x)$ ambiguous. If we choose to use the Galerkin approach then $\phi_n(x) \in P_n$ and so therefore $\psi_m(x) = \phi_n(x) \;if\; m=n$. This is particularly useful when we consider the integral of products of the approximate solution and the test function as these will be zero everywhere except for when they the two functions are the same order.
+We have as yet left the definition of the test function $\phi(x)$ ambiguous. If we choose to use the Galerkin approach then $\phi_n(x) \in \tilde{P}_n$ and so therefore $\psi_m(x) = \phi_n(x) \;if\; m=n$. This is particularly useful when we consider the integral of products of the approximate solution and the test function as these will be zero everywhere except for when they the two functions are the same order.
 
 Applying the Galerkin approach to the weak form in \eqref{WeakFormApproxIntermed}, and applying the numerical flux at the endpoints yields
-	\begin{equation}\label{WeakFormNumFlux}
+	\begin{equation}\label{WeakFormNumFluxIntermed}
 	\sum_{m=0}^M \left[ \frac{\mathrm{d}\overset{m}{a}}{\mathrm{d} t} \int_{I_k}\! \overset{m}{\psi} \, \overset{n}{\phi} \,\mathrm{d}x \right] + 
 	[g(v^-,v^+) \; \overset{n}{\phi}] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -  
 	\int_{I_k}\! f(v) \,\frac{\mathrm{d} \overset{n}{\phi}}{\mathrm{d} x} \,\mathrm{d}x = 0
 	\;\;\; for \; 0 \leq n \leq N
 	\end{equation}
-applying the relationship found in \eqref{LegInnerProd} along with the relation for $P_n(\pm 1)$
-	\begin{gather}\label{WeakFormNumFluxIntermed}
-	\frac{\mathrm{d}\overset{n}{a}}{\mathrm{d} t}\left(\frac{2}{2n+1}\right)
+applying the relationship found in \eqref{ShiftLegInnerProd} along with the relation for $P_n(\pm 1)$
+	\begin{gather}\label{WeakFormNumFlux}
+	\frac{\mathrm{d}\overset{n}{a}}{\mathrm{d} t}\left(\frac{\Delta x}{2n+1}\right)
 	+ g(\Sigma \overset{m}{a}_k,\Sigma \overset{m}{a}_{k+1}(-1)^m) - g(\Sigma \overset{m}{a}_{k-1},\Sigma \overset{m}{a}_{k}(-1)^m) (-1)^m\\
 	- \int_{I_k}\! f(v) \,\frac{\mathrm{d} \overset{n}{\phi}}{\mathrm{d} x} \,\mathrm{d}x = 0
 	\;\;\; for \; 0 \leq n \leq N \notag
@@ -143,18 +147,29 @@ According to Quarteroni (1988) the derivative of a function can be represented u
 	\hat{f}_p = (p+1/2) (f,L_p)
 	\end{gather*}
 
-If we perform this series of operations on $f=\overset{n}{\phi}(x)$ we can exploit orthogonality to see that $\hat{f}_p$ is only non-zero when $p=n$, and becomes 1 at this value of p. Furthermore $p$ can only equal $n$ for values of b that are odd (if n is even) and vice versa. If we permit slightly non-standard notation for a sum in reverse order we can succinctly write
+If we perform this series of operations on $f=\overset{n}{\phi}(x)$ we can exploit orthogonality to see that $\hat{f}_p$ is only non-zero when $p=n$, and becomes 1 at this value of p. Furthermore $p$ can only equal $n$ for values of b that are odd (if n is even) and vice versa. We must also not forget to include the coefficient due to the chain rule acting on the mapping variable $\tilde{x}$. If we permit slightly non-standard notation for a sum in reverse order we can succinctly write
 	\begin{equation}\label{WeakFormNumFlux}
-	\overset{n}{\phi}(x)' = \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x)
+	\overset{n}{\phi}(x)' = \frac{1}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x)
 	\end{equation}
 
 This relation does not necessarily allow us to avoid the integral unless we can say something more about the structure of $f(v)$. If it has the structure of a linear combination of Legendre functions that we can again exploit orthogonality to analytically calculate the integrand. We shall examine this for the case of a linear flux.
 %----------
 \subsection{Linear Case}
-for the simple case of a linear flux function $f(v) = v$
+For the simple case of a linear flux function $f(v) = cv$. Let us choose $c=1$ and pick an upwind numerical flux. Substituting the relation found in \eqref{DerivateLeg} and the linearity of the flux functionwe can again use orthogonality to simplify the integrand from \eqref{WeakFormNumFlux}.
+	\begin{gather}\label{IntegrandSimplify}
+	\int\! f(v) \,\frac{\mathrm{d} \overset{n}{\phi}}{\mathrm{d} x} \,\mathrm{d}x
+	= \int \sum_{m=0}^M \overset{m}{a}(t)\overset{m}{\psi}(x) \;\frac{1}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x) \,\mathrm{d}x \notag \\
+	= \sum_{m=0}^M \left[ \frac{\overset{m}{a}}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 \int \overset{m}{\psi} \:\overset{b}{\phi} \:(2b+1) \,\mathrm{d}x \right]
+	= \frac{2}{\Delta x}\!\! \sum_{\underset{by \: 2}{m=n-1}}^0 \overset{m}{a}
+	\end{gather}
+The integrand in \eqref{IntegrandSimplify} is non-zero of course when $b=m$, which occurs for all odd or even $m<n-1$ for even or odd $n$ so that the integrand becomes the found simple result.
+
+This allows us to simplify the general form of \eqref{WeakFormNumFlux}
 	\begin{equation}\label{WFLinearIntermed}
-	\frac{\mathrm{d}\overset{n}{a}}{\mathrm{d} t}\left(\frac{2}{2n+1}\right) + 
-	\sum_{m=0}^M \left[ \overset{m}{a}_k(t) - \overset{m}{a}_{k-1}(t)(-1)^m \right] -
-	\int_{I_k}\! f(v) \,\frac{\mathrm{d} \overset{n}{\phi}}{\mathrm{d}x} \,\mathrm{d}x = 0 \;\;\; for \; 0 \leq n \leq N
+	\frac{\mathrm{d}\overset{n}{a}}{\mathrm{d} t}\left(\frac{\Delta x}{2n+1}\right)
+	= \frac{2}{\Delta x}\!\! \sum_{\underset{by \: 2}{m=n-1}}^0 \overset{m}{a}_k
+	-\sum_{m=0}^M \left[ \overset{m}{a}_k - \overset{m}{a}_{k-1}(-1)^m \right]
+	\;\;\; for \; 0 \leq n \leq N
 	\end{equation}
+
 \end{document}
