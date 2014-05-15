@@ -47,7 +47,7 @@ In contrast to the FEM, the domain is broken into K independent elements each wi
 	\int_{I_k}\! \frac{\partial u}{\partial t} \,\phi \,\mathrm{d}x + \int_{I_k}\! \frac{\partial f(u)}{\partial x} \,\phi \,\mathrm{d}x = 0
 	\end{equation}
 
-One downside of the current form of \eqref{WeakFormExactIntermed} is that we must place certain smoothness requirements on the flux function to ensure $\frac{\partial f(u)}{\partial x}$ is defined. We can relax these requirements by integrating the right term of \eqref{WeakFormExactIntermed} by parts (recall: $\int uv \,\mathrm{d}x = uv| - \int u'v \,\mathrm{d}x$ where we choose $u=\phi$ and $v'=\frac{\partial f(u)}{\partial x}$).
+One downside of the current form of \eqref{WeakFormExactIntermed} is that we must place certain smoothness requirements on the flux function to ensure $\frac{\partial f(u)}{\partial x}$ is defined. We can relax these requirements by integrating the right term of \eqref{WeakFormExactIntermed} by parts (recall: $\int uv' \,\mathrm{d}x = uv| - \int u'v \,\mathrm{d}x$ where we choose $u=\phi$ and $v'=\frac{\partial f(u)}{\partial x}$).
 	\begin{equation}\label{WeakFormExact}
 	\int_{I_k}\! \frac{\partial u}{\partial t} \,\phi \,\mathrm{d}x +
 	[f(u)\phi] \Big\rvert_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} -
@@ -73,7 +73,7 @@ It is therefore important to choose a polynomial basis of (ideally) orthogonal f
 	\end{equation}
 
 	\begin{equation}\label{LegRodrig}
-	P_m(x) = \frac{1}{2^m m!}\frac{\mathrm{d}^2}{\mathrm{d}x^m}\left[(x^2-1)^m\right]
+	P_m(x) = \frac{1}{2^m m!}\frac{\mathrm{d}^m}{\mathrm{d}x^m}\left[(x^2-1)^m\right]
 	\end{equation}
 
 Orthogonality means that the inner product of two Legendre polynomials is zero if they are not of the same order, this can be expressed using the Kronecker product as
