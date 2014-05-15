@@ -85,7 +85,7 @@ Note that we could use a similar orthonormal version of the basis such that ever
 
 The Legendre polynomials are orthogonal on the domain $[-1,1]$ however we would like to use them on the domain of our element. We can define a mapping that will transform the domain of the element to that of the Legendre polynomials, $\tilde{x} = \frac{2(x-x_{k-^1\!/_2})}{x_{k+^1\!/_2}-x_{k-^1\!/_2}}-1$ to transform $I_k$ to $[-1,1]$. Using this we can define a variant of the shifted Legendre polynomials such that $\tilde{P}_m(x) = P_m(\tilde{x}(x))$. The newly defined shifted Legendre polynomials are now orthogonal over $I_k$ where $\Delta x = x_{k+^1\!/_2}-x_{k-^1\!/_2}$ and the inner product found in \eqref{LegInnerProd} becomes
 	\begin{equation}\label{ShiftLegInnerProd}
-	(\tilde{P}_n,\tilde{P}_m) = \int_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} \! P_n(\tilde{x}) P_m(\tilde{x}) \, \mathrm{d}\tilde{x} = \delta_{nm} \left(\frac{\Delta x}{2m+1}\right)
+	(\tilde{P}_n,\tilde{P}_m) = \int_{x_{k-^1\!/_2}}^{x_{k+^1\!/_2}} \! P_n(\tilde{x}(x)) P_m(\tilde{x}(x)) \, \mathrm{d}x = \delta_{nm} \left(\frac{\Delta x}{2m+1}\right)
 	\end{equation}
 
 Using our orthogonal Legendre polynomial basis we can now construct an approximating solution $v$ for arbitrary order M using basis functions $\overset{m}{\psi}(x) \in \tilde{P}_m$ and basis weights $\overset{m}{a}(t)$
@@ -119,7 +119,7 @@ The classic approach to choosing a numerical flux function for a DG method is to
 
 %----------
 \subsection{Galerkin Approach}
-We have as yet left the definition of the test function $\phi(x)$ ambiguous. If we choose to use the Galerkin approach then $\phi_n(x) \in \tilde{P}_n$ and so therefore $\psi_m(x) = \phi_n(x) \;if\; m=n$. This is particularly useful when we consider the integral of products of the approximate solution and the test function as these will be zero everywhere except for when they the two functions are the same order.
+We have as yet left the definition of the test function $\phi(x)$ ambiguous. If we choose to use the Galerkin approach then $\phi_n(x) \in \tilde{P}_n$ and so therefore $\psi_m(x) = \phi_n(x) \;if\; m=n$. This is particularly useful when we consider the integral of products of the approximate solution and the test function as these will be zero everywhere except for when the two functions are the same order.
 
 Applying the Galerkin approach to the weak form in \eqref{WeakFormApproxIntermed}, and applying the numerical flux at the endpoints yields
 	\begin{equation}\label{WeakFormNumFluxIntermed}
@@ -138,37 +138,39 @@ applying the relationship found in \eqref{ShiftLegInnerProd} along with the rela
 
 %----------
 \subsection{Legendre Derivative Relations}
-Ideally we would like to analytically calculate all integrands to avoid the need for numerical quadrature. The last remaining integrand is the last term in \eqref{WeakFormNumFluxIntermed} involving the product of the flux with the derivative of the test function. Let's start with finding a closed form expression for the derivative.
+Ideally we would like to analytically calculate all integrands to avoid the need for numerical quadrature. The last remaining integrand is the last term in \eqref{WeakFormNumFlux} involving the product of the flux with the derivative of the test function. Let's start with finding a closed form expression for the derivative.
 
 According to Quarteroni (1988) the derivative of a function can be represented using Legendre functions by
-	\begin{gather*}\label{DerivativeLeg}
+	\begin{gather*}\label{Quarteroni}
 	f'(x) = \sum_{b=0}^\infty \hat{f}_b L_b(x)\\
 	\hat{f}_b = 2b+1 \sum_{\underset{p+b odd}{p=b+1}}^\infty \hat{f}_p\\
 	\hat{f}_p = (p+1/2) (f,L_p)
 	\end{gather*}
 
 If we perform this series of operations on $f=\overset{n}{\phi}(x)$ we can exploit orthogonality to see that $\hat{f}_p$ is only non-zero when $p=n$, and becomes 1 at this value of p. Furthermore $p$ can only equal $n$ for values of b that are odd (if n is even) and vice versa. We must also not forget to include the coefficient due to the chain rule acting on the mapping variable $\tilde{x}$. If we permit slightly non-standard notation for a sum in reverse order we can succinctly write
-	\begin{equation}\label{WeakFormNumFlux}
+	\begin{equation}\label{DerivativeLeg}
 	\overset{n}{\phi}(x)' = \frac{1}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x)
 	\end{equation}
 
 This relation does not necessarily allow us to avoid the integral unless we can say something more about the structure of $f(v)$. If it has the structure of a linear combination of Legendre functions that we can again exploit orthogonality to analytically calculate the integrand. We shall examine this for the case of a linear flux.
 %----------
 \subsection{Linear Case}
-For the simple case of a linear flux function $f(v) = cv$. Let us choose $c=1$ and pick an upwind numerical flux. Substituting the relation found in \eqref{DerivateLeg} and the linearity of the flux functionwe can again use orthogonality to simplify the integrand from \eqref{WeakFormNumFlux}.
-	\begin{gather}\label{IntegrandSimplify}
+For the simple case of a linear flux function $f(v) = cv$; Let us choose $c=1$. Substituting the relation found in \eqref{DerivativeLeg} and the linearity of the flux function we can again use orthogonality to simplify the integrand from \eqref{WeakFormNumFlux}.
+	\begin{equation}\label{IntegrandSimplify}
+	\begin{split}
 	\int\! f(v) \,\frac{\mathrm{d} \overset{n}{\phi}}{\mathrm{d} x} \,\mathrm{d}x
-	= \int \sum_{m=0}^M \overset{m}{a}(t)\overset{m}{\psi}(x) \;\frac{1}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x) \,\mathrm{d}x \notag \\
-	= \sum_{m=0}^M \left[ \frac{\overset{m}{a}}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 \int \overset{m}{\psi} \:\overset{b}{\phi} \:(2b+1) \,\mathrm{d}x \right]
-	= \frac{2}{\Delta x}\!\! \sum_{\underset{by \: 2}{m=n-1}}^0 \overset{m}{a}
-	\end{gather}
-The integrand in \eqref{IntegrandSimplify} is non-zero of course when $b=m$, which occurs for all odd or even $m<n-1$ for even or odd $n$ so that the integrand becomes the found simple result.
+	= \int \sum_{m=0}^M \overset{m}{a}(t)\overset{m}{\psi}(x) \;\frac{1}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x) \,\mathrm{d}x \\
+	=\frac{1}{\Delta x} \sum_{m=0}^M \left[\overset{m}{a} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \int \overset{m}{\psi} \:\overset{b}{\phi} \;\mathrm{d}x \right]
+	=\sum_{\underset{by \: 2}{m=n-1}}^0 \overset{m}{a}
+	\end{split}
+	\end{equation}
+The integrand in \eqref{IntegrandSimplify} is non-zero of course when $b=m$, which occurs for all odd or even $m<n-1$ for even or odd $n$; the inner product for the shifted Legendre polynomials found in \eqref{ShiftLegInnerProduct} cancels both the order dependent $(2b+1)$ and $\frac{1}{\Delta x}$ terms on the outside of the sum. The resulting integrand is quite simple.
 
-This allows us to simplify the general form of \eqref{WeakFormNumFlux}
-	\begin{equation}\label{WFLinearIntermed}
-	\frac{\mathrm{d}\overset{n}{a}}{\mathrm{d} t}\left(\frac{\Delta x}{2n+1}\right)
-	= \frac{2}{\Delta x}\!\! \sum_{\underset{by \: 2}{m=n-1}}^0 \overset{m}{a}_k
-	-\sum_{m=0}^M \left[ \overset{m}{a}_k - \overset{m}{a}_{k-1}(-1)^m \right]
+If we choose to use a upwind numerical flux we can further simplify the evaluation at the element boundaries. Additionally, applying the relation found in \eqref{IntegrandSimplify} we arrive at the following very simple expression:
+	\begin{equation}\label{WeakFormLinear}
+	\frac{\mathrm{d}\overset{n}{a}}{\mathrm{d} t}
+	=\frac{2n+1}{\Delta x} \left( \sum_{\underset{by \: 2}{m=n-1}}^0 \overset{m}{a}_k
+	-\sum_{m=0}^M \left[ \overset{m}{a}_k - \overset{m}{a}_{k-1}(-1)^m \right]\right)
 	\;\;\; for \; 0 \leq n \leq N
 	\end{equation}
 
