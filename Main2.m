@@ -45,3 +45,8 @@ for k=1:length(elemBC)
             BasisWeights(m+1) = (m+.5)*sum(w.*sin(tau*map)'.*l);
     end
 end
+
+%--Now that we have u0 we can begin explicit time stepping (forward Euler)
+%with the semi-discrete form of the PDE.
+%--Because we have a linear flux function all the classic monotone flux
+%schemes reduce to the simple upwind flux i.e. g(v-(x),g(v+(x))=v-(x)
