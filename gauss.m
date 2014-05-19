@@ -1,6 +1,6 @@
-function [x,map,w] = gauss(N,a,b) 
+function [x,w] = gauss(N)
 % GAUSS   nodes x (Legendre points) and weights w
-%         for Gauss quadrature and a mapped domain [a,b]
+%         for Gauss quadrature
 %Due to L. N. Trefethen, Spectral Methods in MATLAB, SIAM, Philadelphia, 2000
  
     beta = .5./sqrt(1-(2*(1:N-1)).^(-2)); 
@@ -9,5 +9,4 @@ function [x,map,w] = gauss(N,a,b)
     x = diag(D); 
     [x,i] = sort(x); 
     w = 2*V(1,i).^2;
-    map = (b-a)*x/2 + (a+b)/2;
 end
