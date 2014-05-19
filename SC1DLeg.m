@@ -66,6 +66,13 @@ end
 %with the semi-discrete form of the PDE.
 %--Because we have a linear flux function all the classic monotone flux
 %schemes reduce to the simple upwind flux i.e. g(v-(x),g(v+(x))=v-(x)
+
+j = ceil( (1:16)/4);
+i = repmat( (1:4)',4,1);
+SelfStencil = reshape( -not(toeplitz(mod(0:N,2),0:N<0)) ,(N+1)^2, 1);
+UpwindStencil = ones(N+1); UpwindStencil(2:2:N+1)=-1;
+UpwindStencil = reshape(UpwindStencil,(N+1)^2,1);
+
 uh = L*BasisWeights';
 u = sin(tau*map');
 normm = sqrt(sum(sum((u-uh).^2)));
