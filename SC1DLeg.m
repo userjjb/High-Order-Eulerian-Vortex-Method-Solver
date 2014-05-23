@@ -1,8 +1,11 @@
 %--Josh Bevan 2014
 %--1D Scalar Conservation Eqn solution using Discontinuous Galerkin
+close all
+clear all
+
 tau=2*pi();
 N=2;
-K=16;
+K=32;
 
 %--Here we attempt to solve the 1D scalar conservation eqn of the form:
 %\frac{\partial u)(\partial t} + \frac{\partial f(u))(\partial x} = 0
@@ -67,12 +70,76 @@ end
 %--Because we have a linear flux function all the classic monotone flux
 %schemes reduce to the simple upwind flux i.e. g(v-(x),g(v+(x))=v-(x)
 
-j = ceil( (1:16)/4);
-i = repmat( (1:4)',4,1);
-SelfStencil = reshape( -not(toeplitz(mod(0:N,2),0:N<0)) ,(N+1)^2, 1);
-UpwindStencil = ones(N+1); UpwindStencil(2:2:N+1)=-1;
-UpwindStencil = reshape(UpwindStencil,(N+1)^2,1);
+%Self-references to the bases in the element. This is the sum of part of
+%the upwind flux and the RHS integral in the original PDE. The RHS integral
+%portion is a strictly lower triangular matrix
+SelfStencil = -not(toeplitz(mod(0:N,2),0:N<0));
 
-uh = L*BasisWeights';
-u = sin(tau*map');
-normm = sqrt(sum(sum((u-uh).^2)));
+%References to the bases in the upwind element, consists of the other part
+%of the upwind flux
+UpwindStencil = ones(N+1); UpwindStencil(:,2:2:N+1)=-1;
+
+%LHSIntegral is a purely diagonal matrix that depends on element size and
+%the order of each basis
+LHSIntegral = reshape([1:2:2*N+1]'*(1./deltax),K*(N+1),1);
+
+%Build a unit stencil to pull the global diagonal pattern from
+C=SelfStencil; C(N+2:2*N+2,1:N+1)=UpwindStencil;
+DiagStencil = zeros(N+1,3*N+2);
+for d=-(2*N+1):N
+    DiagStencil(1:length(diag(C,d)),d+2*N+2) = diag(C,d);
+end
+
+%Flip superdiagonal since spdiags truncates the start of any oversized
+%superdiagonals
+DiagStencil(:,2*N+2:3*N+2) = flipud(DiagStencil(:,2*N+2:3*N+2));
+
+
+
+%Build sparse reference matrix by repeating unit stencil for each element
+A = spdiags(repmat(DiagStencil,K,1),-(2*N+1):N,K*(N+1),K*(N+1));
+A(1:N+1,K*(N+1)-N:K*(N+1))=UpwindStencil;
+spy(A)
+
+%Calculate new da/dt
+%BasisWeights_dt=LHSIntegral.*(A*reshape(BasisWeights',K*(N+1),1));
+BasisWeights = reshape(BasisWeights',K*(N+1),1);
+    
+%--Discretize in time and plot
+deltaT= .00001;
+saveT = 0.001;
+nsaveT = floor(saveT/deltaT);
+endT = .1;
+nT = floor(endT/deltaT);
+NormFreq = 100;
+saved = zeros(N+1,K,(nT/nsaveT)+1);
+i=0;
+norm2 = [];
+for t= 0:1:nT
+    BasisWeights_dt=LHSIntegral.*(A*BasisWeights);
+    BasisWeights = BasisWeights+(BasisWeights_dt.*deltaT);
+    if t/nsaveT==floor(t/nsaveT)
+        if i/NormFreq == floor(i/NormFreq)
+            %norm2 = [norm2 sum(([u(1,1) u(:,2)']'-BasisWeights([1 2:2:end])).^2)];
+        end
+        i= i+1;
+        saved(:,:,i)=reshape(BasisWeights,N+1,K);
+    end
+end
+
+
+j=0;
+for i=1:length(saved)
+    plot(map',(L*saved(:,:,i)))
+    axis([0 1 -1.5 1.5])
+    if (i-1)/NormFreq == floor((i-1)/NormFreq)
+        j=j+1;
+    end
+    text(1.02,0.1,'L2-Norm')
+    %text(1.02,0,num2str(norm2(j)));
+    text(1.02,-0.2,'RMS')
+    %text(1.02,-.3,num2str(rms(reshape(saved(2,:,i),K,1))));
+    text(1.02,1.1,'Time')
+    text(1.02,1,num2str((i-1)*saveT));
+    pause(.3)
+end
