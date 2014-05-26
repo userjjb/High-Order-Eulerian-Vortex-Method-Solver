@@ -4,7 +4,7 @@ close all
 clear all
 
 tau=2*pi();
-N=2;
+N=3;
 K=32;
 
 %--Here we attempt to solve the 1D scalar conservation eqn of the form:
@@ -39,10 +39,10 @@ elemBC = reshape(sort([xNode,xNode(2:end-1)]),2,K)';
 %quadrature which is accurate up to 2N-1
 
 %Precalculate quadrature nodes and weights 
-[Qx,Qw]=gauss(2*N-1);
+[Qx,Qw]=gauss(N+1);
 
 %Precompute Legendre values for fixed order quadrature points
-L = zeros(2*N-1,N+1);
+L = zeros(N+1);
 for m=0:N
     temp = legendre(m,Qx); %legendre() actually calculates the associated
     L(:,m+1) = temp(1,:)'; %legendre polys, we only need m=0 (first row)
@@ -57,7 +57,7 @@ end
 %--The simplified result is \overset{m}{a} =
 %(m+.5) \sum_{i=1}^N Qw_i sin(2\pi \tilde{x}(x) ) \overset{n}{\phi}(x_i)
 BasisWeights = zeros(K,N+1);
-map = zeros(K,2*N-1);
+map = zeros(K,N+1);
 for k=1:K
     map(k,:) = (elemBC(k,2)-elemBC(k,1))*Qx/2 + (elemBC(k,1)+elemBC(k,2))/2;
     for m=0:N
@@ -73,11 +73,11 @@ end
 %Self-references to the bases in the element. This is the sum of part of
 %the upwind flux and the RHS integral in the original PDE. The RHS integral
 %portion is a strictly lower triangular matrix
-SelfStencil = -not(toeplitz(mod(0:N,2),0:N<0));
+SelfStencil = 2*(toeplitz(mod(0:N,2),0:N<0))-ones(N+1);
 
 %References to the bases in the upwind element, consists of the other part
 %of the upwind flux
-UpwindStencil = ones(N+1); UpwindStencil(:,2:2:N+1)=-1;
+UpwindStencil = ones(N+1); UpwindStencil(2:2:N+1,:)=-1;
 
 %LHSIntegral is a purely diagonal matrix that depends on element size and
 %the order of each basis
@@ -94,8 +94,6 @@ end
 %superdiagonals
 DiagStencil(:,2*N+2:3*N+2) = flipud(DiagStencil(:,2*N+2:3*N+2));
 
-
-
 %Build sparse reference matrix by repeating unit stencil for each element
 A = spdiags(repmat(DiagStencil,K,1),-(2*N+1):N,K*(N+1),K*(N+1));
 A(1:N+1,K*(N+1)-N:K*(N+1))=UpwindStencil;
@@ -106,40 +104,37 @@ spy(A)
 BasisWeights = reshape(BasisWeights',K*(N+1),1);
     
 %--Discretize in time and plot
-deltaT= .00001;
-saveT = 0.001;
+deltaT= .0001;
+saveT = 0.05;
+endT = 10;
+
 nsaveT = floor(saveT/deltaT);
-endT = .1;
 nT = floor(endT/deltaT);
-NormFreq = 100;
-saved = zeros(N+1,K,(nT/nsaveT)+1);
-i=0;
-norm2 = [];
-for t= 0:1:nT
-    BasisWeights_dt=LHSIntegral.*(A*BasisWeights);
-    BasisWeights = BasisWeights+(BasisWeights_dt.*deltaT);
-    if t/nsaveT==floor(t/nsaveT)
-        if i/NormFreq == floor(i/NormFreq)
-            %norm2 = [norm2 sum(([u(1,1) u(:,2)']'-BasisWeights([1 2:2:end])).^2)];
-        end
+%saved = zeros(N+1,K,(nT/nsaveT)+1);
+i=1;
+
+saved(:,:,1)=reshape(BasisWeights,N+1,K);
+for t= 1:1:nT
+    if t/nsaveT==floor(t/nsaveT)    
         i= i+1;
         saved(:,:,i)=reshape(BasisWeights,N+1,K);
     end
+    BasisWeights_dt=LHSIntegral.*(A*BasisWeights);
+    BasisWeights = BasisWeights+(BasisWeights_dt.*deltaT);
 end
 
-
+Lobatto = zeros(N+3,N+1);
+for m=0:N
+    temp = legendre(m,[-1; Qx; 1]);
+    Lobatto(:,m+1) = temp(1,:)';
+end
 j=0;
 for i=1:length(saved)
-    plot(map',(L*saved(:,:,i)))
+    plot([elemBC(:,1) map elemBC(:,2)]',(Lobatto*saved(:,:,i)),'o-')
     axis([0 1 -1.5 1.5])
-    if (i-1)/NormFreq == floor((i-1)/NormFreq)
-        j=j+1;
-    end
-    text(1.02,0.1,'L2-Norm')
-    %text(1.02,0,num2str(norm2(j)));
     text(1.02,-0.2,'RMS')
-    %text(1.02,-.3,num2str(rms(reshape(saved(2,:,i),K,1))));
+    text(1.02,-.3,num2str(rms(reshape(L*saved(:,:,i),K*(N+1),1))));
     text(1.02,1.1,'Time')
     text(1.02,1,num2str((i-1)*saveT));
-    pause(.3)
+    pause(.01)
 end

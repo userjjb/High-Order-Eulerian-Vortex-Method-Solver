@@ -149,7 +149,7 @@ According to Quarteroni (1988) the derivative of a function can be represented u
 
 If we perform this series of operations on $f=\overset{n}{\phi}(x)$ we can exploit orthogonality to see that $\hat{f}_p$ is only non-zero when $p=n$, and becomes 1 at this value of p. Furthermore $p$ can only equal $n$ for values of b that are odd (if n is even) and vice versa. We must also not forget to include the coefficient due to the chain rule acting on the mapping variable $\tilde{x}$. If we permit slightly non-standard notation for a sum in reverse order we can succinctly write
 	\begin{equation}\label{DerivativeLeg}
-	\overset{n}{\phi}(x)' = \frac{1}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x)
+	\overset{n}{\phi}(x)' = \frac{2}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x)
 	\end{equation}
 
 This relation does not necessarily allow us to avoid the integral unless we can say something more about the structure of $f(v)$. If it has the structure of a linear combination of Legendre functions that we can again exploit orthogonality to analytically calculate the integrand. We shall examine this for the case of a linear flux.
@@ -159,9 +159,9 @@ For the simple case of a linear flux function $f(v) = cv$; Let us choose $c=1$. 
 	\begin{equation}\label{IntegrandSimplify}
 	\begin{split}
 	\int\! f(v) \,\frac{\mathrm{d} \overset{n}{\phi}}{\mathrm{d} x} \,\mathrm{d}x
-	= \int \sum_{m=0}^M \overset{m}{a}(t)\overset{m}{\psi}(x) \;\frac{1}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x) \,\mathrm{d}x \\
-	=\frac{1}{\Delta x} \sum_{m=0}^M \left[\overset{m}{a} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \int \overset{m}{\psi} \:\overset{b}{\phi} \;\mathrm{d}x \right]
-	=\sum_{\underset{by \: 2}{m=n-1}}^0 \overset{m}{a}
+	= \int \sum_{m=0}^M \overset{m}{a}(t)\overset{m}{\psi}(x) \;\frac{2}{\Delta x} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \:\overset{b}{\phi}(x) \,\mathrm{d}x \\
+	=\frac{2}{\Delta x} \sum_{m=0}^M \left[\overset{m}{a} \sum_{\underset{by \; 2}{b=n-1}}^0 (2b+1) \int \overset{m}{\psi} \:\overset{b}{\phi} \;\mathrm{d}x \right]
+	=2\sum_{\underset{by \: 2}{m=n-1}}^0 \overset{m}{a}
 	\end{split}
 	\end{equation}
 The integrand in \eqref{IntegrandSimplify} is non-zero of course when $b=m$, which occurs for all odd or even $m<n-1$ for even or odd $n$; the inner product for the shifted Legendre polynomials found in \eqref{ShiftLegInnerProd} cancels both the order dependent $(2b+1)$ and $\frac{1}{\Delta x}$ terms on the outside of the sum. The resulting integrand is quite simple.
@@ -169,7 +169,7 @@ The integrand in \eqref{IntegrandSimplify} is non-zero of course when $b=m$, whi
 If we choose to use a upwind numerical flux we can further simplify the evaluation at the element boundaries. Additionally, applying the relation found in \eqref{IntegrandSimplify} we arrive at the following very simple expression:
 	\begin{equation}\label{WeakFormLinear}
 	\frac{\mathrm{d}\overset{m=n}{a}}{\mathrm{d} t}
-	=\frac{2n+1}{\Delta x} \left( \sum_{\underset{by \: 2}{m=n-1}}^0 \overset{m}{a}_k
+	=\frac{2n+1}{\Delta x} \left( 2\sum_{\underset{by \: 2}{m=n-1}}^0 \overset{m}{a}_k
 	-\sum_{m=0}^M \left[ \overset{m}{a}_k - \overset{m}{a}_{k-1}(-1)^m \right]\right)
 	\;\;\; for \; 0 \leq n \leq N
 	\end{equation}
