@@ -108,23 +108,25 @@ saved   = zeros(K*(N+1),(nT/nsaveT)+1);
 saved(:,1)=BasisWeights;
 i=1;
 for t= 1:1:nT
+	%Periodically save system state for plotting
     if t/nsaveT==floor(t/nsaveT)    
         i= i+1;
         saved(:,i)=BasisWeights;
     end
+	%RK4 explicit time discretization
     k1 = LHSIntegral.*(A*BasisWeights);
     k2 = LHSIntegral.*(A* (BasisWeights + deltaT*k1 /2) );
     k3 = LHSIntegral.*(A* (BasisWeights + deltaT*k2 /2) );
     k4 = LHSIntegral.*(A* (BasisWeights + deltaT*k3) );
     BasisWeights = BasisWeights +(deltaT/6)*(k1 + 2*k2 + 2*k3 + k4);
 end
-
+%Add in element end points to make a "nice" looking plot. The Lobatto quad points are *not* used in the actual solution procedure
 Lobatto = zeros(N+3,N+1);
 for m=0:N
     temp = legendre(m,[-1; Qx; 1]);
     Lobatto(:,m+1) = temp(1,:)';
 end
-j=0;
+%Reconstruct and plot the solution on the global domain.
 for i=1:length(saved)
     plot([elemBC(:,1) map elemBC(:,2)]',(Lobatto*reshape(saved(:,i),N+1,K)))
     axis([0 1 -1.5 1.5])
