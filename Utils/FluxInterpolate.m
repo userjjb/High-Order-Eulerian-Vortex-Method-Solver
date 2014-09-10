@@ -26,10 +26,10 @@
 %interpolation. In reality the variation of velocity inside of an element
 %should be much better well behaved and a lower order interpolation would
 %be sufficient to reach machine precision compared to the test here
-
+clc
 close all
 %Discretization and exact functions
-x = -1:1/200:1;
+x = -1:1/500:1;
 f = sin(pi*x);
 c2 = 20/100;
 b=-.2;
@@ -42,7 +42,7 @@ m=11;
 [nd,w] = gauss(m);
 
 %Interpolation of each example function using a Lagrange basis
-f_h=zeros(1,401);
+f_h=zeros(1,1001);
 for a=1:m
     aa=[1:a-1,a+1:m];
     multer=1;
@@ -54,7 +54,7 @@ for a=1:m
     f_h = f_h + sin(pi*nd(a)).*multer;
 end
 
-g_h=zeros(1,401);
+g_h=zeros(1,1001);
 for a=1:m
     aa=[1:a-1,a+1:m];
     multer=1;
@@ -69,7 +69,7 @@ end
 fh_gh = f_h.*g_h;
 
 %Order m-1 interpolation of the product
-f_g_h=zeros(1,401);
+f_g_h=zeros(1,1001);
 for a=1:m
     aa=[1:a-1,a+1:m];
     multer=1;
@@ -87,4 +87,3 @@ plot(x,fh_gh,'g')
 %Report norms for comparison
 norm(f_g-fh_gh)
 norm(f_g-f_g_h)
-
