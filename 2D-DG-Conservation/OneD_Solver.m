@@ -6,3 +6,4 @@ Nd = 2*pi*(0:1/(K-1):1); %Element nodes
 
 [Qx,Qw] = GLquad(N); %Gauss Legendre quadrature points and weights
 
+Stiffness = LagrangeStiffness(N);
