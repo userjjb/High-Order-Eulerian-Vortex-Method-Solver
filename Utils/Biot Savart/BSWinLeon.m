@@ -1,4 +1,4 @@
-function [GlobOmitX, GlobOmit] = BSGlobOmit(fun,A,B,freq,N)
+function [WinLeonX, WinLeon] = BSWinLeon(fun,A,B,freq,N,del)
 %Global quadrature with singularity omission method for Biot Savart.
 %Calculate the velocity at every 1 out of 'freq' quadrature points by 
 %integrating the whole domain with a GL quadrature of order N-1 (omitting 
@@ -11,13 +11,13 @@ Qx = Qx*(B-A)/2+(B+A)/2;
 saved=1;
 resolve = 1:max(1,round(N/freq)):N; %Evaluate at same frequency as Decomp for speed comparison purposes
 for i=resolve
-    waitbar(saved/numel(resolve),h,'Global Omit method...')
-    NOi = [1:i-1,i+1:N];
-    GlobOmit(saved) = Qw(NOi)*[ fun(Qx(NOi)) .* (Qx(i)-Qx(NOi))./abs(Qx(i)-Qx(NOi)).^3 ];
+    waitbar(saved/numel(resolve),h,'Rosenhead-Moore method...')
+    %NOi = [1:i-1,i+1:N];
+    WinLeon(saved) = Qw*[ fun(Qx) .* (Qx(i)-Qx).*(abs(Qx(i)-Qx).^2+(5/2)*del^2)./(abs(Qx(i)-Qx).^2+del^2).^(5/2) ];
     saved=saved+1;
 end
-GlobOmit = GlobOmit*(B-A)/2;
-GlobOmitX = Qx(resolve);
+WinLeon = WinLeon*(B-A)/2;
+WinLeonX = Qx(resolve);
 close(h)
 end
 
