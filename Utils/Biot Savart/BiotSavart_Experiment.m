@@ -4,9 +4,9 @@ clc
 
 %Local vorticity functions
 %fun = @(x) 1-x.^2/2+x.^4/24-x.^6/720+x.^8/40320-x.^10/3628800; %Taylor trig
-fun = @(x) 1-(pi^2*x.^2)/2+(pi^4*x.^4)/24-(pi^6*x.^6)/720;     %Taylor trig
+%fun = @(x) 1-(pi^2*x.^2)/2+(pi^4*x.^4)/24-(pi^6*x.^6)/720;     %Taylor trig
 %fun = @(x) max(0, exp(-x.^2/.4));                              %Gaussian curve
-%fun = @(x) max(0,cos(pi*x)- heaviside(abs(x)-1.01));       %Cleaved trig
+fun = @(x) max(0,cos(pi*x)- heaviside(abs(x)-1.01));       %Cleaved trig
 A=-1; %Left boundary
 B=1; %Right Boundary
 
@@ -32,7 +32,7 @@ plot(DecompX,DecompV,'b')
 % end
 % plot(Centroids(resolve),Decomp+ExtR+ExtL,':b')
 
-N=1000;
+N=50;
 del = (B-A)/50;
 %Global quadrature with singularity omission
 [GlobOmitX, GlobOmit] = BSGlobOmit(fun,A,B,numel(DecompV),N);
@@ -43,7 +43,12 @@ plot(RoseMooreX,RoseMoore,'g')
 
 [WinLeonX, WinLeon] = BSWinLeon(fun,A,B,numel(DecompV),N,del);
 plot(WinLeonX,WinLeon,'c')
-text(WinLeonX(find(max(WinLeon)==WinLeon)),max(WinLeon),num2str(max(WinLeon)));
+
+del2 = (B-A)/1000;
+truncated = DecompX(DecompX-del2>A&DecompX+del2<B);
+[vertices, DecompImp] = BSDecompImp(fun,A,B,100,7,truncated,del2);
+plot(truncated,DecompImp,'m')
+text(truncated(find(max(DecompImp)==DecompImp)),max(DecompImp),num2str(max(DecompImp)));
 
 %axis([0,1,0,50])
 
