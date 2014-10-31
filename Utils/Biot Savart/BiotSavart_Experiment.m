@@ -15,7 +15,7 @@ hold on
 plot(xx,10*fun(xx),'k') %Exaggerate vorticity function for display purposes
 
 %Domain decomposition method
-[DecompX, DecompV] = BSDecomp(fun,A,B,1000,3);
+[DecompX, DecompV] = BSDecomp(fun,A,B,2000,3);
 plot(DecompX,DecompV,'b')
 
 % %Correct for external vorticity for each of the resolved points
@@ -32,8 +32,8 @@ plot(DecompX,DecompV,'b')
 % end
 % plot(Centroids(resolve),Decomp+ExtR+ExtL,':b')
 
-N=50;
-del = (B-A)/50;
+N=200;
+del = (B-A)/200;
 %Global quadrature with singularity omission
 [GlobOmitX, GlobOmit] = BSGlobOmit(fun,A,B,numel(DecompV),N);
 plot(GlobOmitX,GlobOmit,'r')
@@ -44,9 +44,15 @@ plot(RoseMooreX,RoseMoore,'g')
 [WinLeonX, WinLeon] = BSWinLeon(fun,A,B,numel(DecompV),N,del);
 plot(WinLeonX,WinLeon,'c')
 
-del2 = (B-A)/1000;
+del2 = (B-A)/2000;
 truncated = DecompX(DecompX-del2>A&DecompX+del2<B);
-[vertices, DecompImp] = BSDecompImp(fun,A,B,100,7,truncated,del2);
+
+%
+VX=truncated;
+K=100;
+
+%
+[vertices, DecompImp] = BSDecompImp(fun,A,B,100,7,truncated,del2,deltax,map);
 plot(truncated,DecompImp,'m')
 text(truncated(find(max(DecompImp)==DecompImp)),max(DecompImp),num2str(max(DecompImp)));
 
