@@ -44,16 +44,11 @@ plot(RoseMooreX,RoseMoore,'g')
 [WinLeonX, WinLeon] = BSWinLeon(fun,A,B,numel(DecompV),N,del);
 plot(WinLeonX,WinLeon,'c')
 
-del2 = (B-A)/2000;
+del2 = (B-A)/1000;
 truncated = DecompX(DecompX-del2>A&DecompX+del2<B);
-
-%
-VX=truncated;
-K=100;
-
-%
-[vertices, DecompImp] = BSDecompImp(fun,A,B,100,7,truncated,del2,deltax,map);
-plot(truncated,DecompImp,'m')
+[deltax, map, Qw] = AdapElem(A,B,200,10,del2,truncated);
+[DecompImp] = BSDecompImp(fun,A,B,truncated,deltax,map,Qw);
+plot(truncated,1.2794*DecompImp,'m')
 text(truncated(find(max(DecompImp)==DecompImp)),max(DecompImp),num2str(max(DecompImp)));
 
 %axis([0,1,0,50])
@@ -61,9 +56,9 @@ text(truncated(find(max(DecompImp)==DecompImp)),max(DecompImp),num2str(max(Decom
 % %Split Quadrature
 % [Split] = BSSplit(fun,A,B,GlobOmitX,6);
 % plot(GlobOmitX,Split(1,:)+Split(2,:),'g')
-% 
+
 % %Near/Far Split Quadrature method
-% [NFSplit] = BSNFSplit(fun,A,B,GlobOmitX,3,0.2,0.0001);
-% plot(GlobOmitX,NFSplit(1,:)+NFSplit(2,:)+NFSplit(3,:)+NFSplit(4,:),'c')
+% [NFSplit] = BSNFSplit(fun,A,B,GlobOmitX,100,0.01,0);
+% plot(GlobOmitX,NFSplit(1,:)+NFSplit(2,:)+NFSplit(3,:)+NFSplit(4,:),':b')
 
 

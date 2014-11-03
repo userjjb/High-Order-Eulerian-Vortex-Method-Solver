@@ -6,9 +6,9 @@ function LEval = Lagrange(N,x_vect,n_vect)
     [Qx,~] = GLquad(N); %Calc interpolation points
     
     savecount =0;
-    for n = n_vect(1):n_vect(end) %Scalability prob: not vectorized for n
+    for n = n_vect %Scalability prob: not vectorized for n
         savecount =savecount+1;
-        NOn =Qx([1:n-1 n+1:N]); %All interp points except the one for the n basis
+        NOn =Qx([1:n-1, n+1:N]); %All interp points except the one for the n basis
         a =1; %Initialization param to get recurrence started
         for i=1:numel(NOn)
             %Calculate the coefficients in front of each term in the polynomial

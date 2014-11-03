@@ -1,6 +1,7 @@
-function [ output_args ] = Untitled( input_args )
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+function [deltax, map, Qw] = AdapElem(A,B,K,N,del,VX)
+[Qx,Qw]=GLquad(N);
+assert(all(VX-del>A) & all(VX+del<B),'Singularity exclusion zone exceeds domain bounds')
+
 for i=1:numel(VX)
     frac = min(K-1,max(1,round((VX(i)-del-A)*K/(B-A-2*del)))); %frac out of K elements on left side
     vertices=[A:(VX(i)-del-A)/frac:VX(i)-del , VX(i)+del:(B-VX(i)-del)/(K-frac):B]; %Vertices of all elements, spread evenly for each left and right sides
