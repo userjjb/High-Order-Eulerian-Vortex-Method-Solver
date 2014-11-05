@@ -48,7 +48,7 @@ del2 = (B-A)/1000;
 truncated = DecompX(DecompX-del2>A&DecompX+del2<B);
 [deltax, map, Qw] = AdapElem(A,B,200,10,del2,truncated);
 [DecompImp] = BSDecompImp(fun,A,B,truncated,deltax,map,Qw);
-plot(truncated,1.2794*DecompImp,'m')
+plot(truncated,DecompImp,'m')
 text(truncated(find(max(DecompImp)==DecompImp)),max(DecompImp),num2str(max(DecompImp)));
 
 %axis([0,1,0,50])
