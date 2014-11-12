@@ -6,7 +6,7 @@ clc
 %fun = @(x) 1-x.^2/2+x.^4/24-x.^6/720+x.^8/40320-x.^10/3628800; %Taylor trig
 %fun = @(x) 1-(pi^2*x.^2)/2+(pi^4*x.^4)/24-(pi^6*x.^6)/720;     %Taylor trig
 %fun = @(x) max(0, exp(-x.^2/.4));                              %Gaussian curve
-fun = @(x) max(0,cos(pi*x)- heaviside(abs(x)-1.01));       %Cleaved trig
+fun = @(x) max(0,cos(pi*x)+1- heaviside(abs(x)-1.01));       %Cleaved trig
 A=-1; %Left boundary
 B=1; %Right Boundary
 
@@ -17,6 +17,14 @@ plot(xx,10*fun(xx),'k') %Exaggerate vorticity function for display purposes
 %Domain decomposition method
 [DecompX, DecompV] = BSDecomp(fun,A,B,2000,3);
 plot(DecompX,DecompV,'b')
+
+%Improved decomp method with hp-adaptivity
+del2 = (B-A)/1000;
+truncated = DecompX(DecompX-del2>A&DecompX+del2<B);
+[deltax, map, Qw] = AdapElem(A,B,200,10,del2,truncated);
+[DecompImp] = BSDecompImp(fun,A,B,truncated,deltax,map,Qw);
+plot(truncated,DecompImp,'m')
+text(truncated(find(max(DecompImp)==DecompImp)),max(DecompImp),num2str(max(DecompImp)));
 
 % %Correct for external vorticity for each of the resolved points
 % cut=1.048; %How far into external domain corrected quadratures extend
@@ -34,28 +42,22 @@ plot(DecompX,DecompV,'b')
 
 N=200;
 del = (B-A)/200;
+[Qx,Qw]=GLquad(N);
 %Global quadrature with singularity omission
-[GlobOmitX, GlobOmit] = BSGlobOmit(fun,A,B,numel(DecompV),N);
+[GlobOmitX, GlobOmit] = BSGlobOmit(fun,A,B,numel(DecompV),N,Qx,Qw);
 plot(GlobOmitX,GlobOmit,'r')
 
-[RoseMooreX, RoseMoore] = BSRoseMoore(fun,A,B,numel(DecompV),N,del);
+[RoseMooreX, RoseMoore] = BSRoseMoore(fun,A,B,numel(DecompV),N,Qx,Qw,del);
 plot(RoseMooreX,RoseMoore,'g')
 
-[WinLeonX, WinLeon] = BSWinLeon(fun,A,B,numel(DecompV),N,del);
+[WinLeonX, WinLeon] = BSWinLeon(fun,A,B,numel(DecompV),N,Qx,Qw,del);
 plot(WinLeonX,WinLeon,'c')
-
-del2 = (B-A)/1000;
-truncated = DecompX(DecompX-del2>A&DecompX+del2<B);
-[deltax, map, Qw] = AdapElem(A,B,200,10,del2,truncated);
-[DecompImp] = BSDecompImp(fun,A,B,truncated,deltax,map,Qw);
-plot(truncated,DecompImp,'m')
-text(truncated(find(max(DecompImp)==DecompImp)),max(DecompImp),num2str(max(DecompImp)));
 
 %axis([0,1,0,50])
 
-% %Split Quadrature
-% [Split] = BSSplit(fun,A,B,GlobOmitX,6);
-% plot(GlobOmitX,Split(1,:)+Split(2,:),'g')
+%Split Quadrature
+[Split] = BSSplit(fun,A,B,GlobOmitX,6);
+plot(GlobOmitX,Split(1,:)+Split(2,:),'g')
 
 % %Near/Far Split Quadrature method
 % [NFSplit] = BSNFSplit(fun,A,B,GlobOmitX,100,0.01,0);

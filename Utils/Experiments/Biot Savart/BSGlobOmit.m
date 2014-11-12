@@ -1,11 +1,10 @@
-function [GlobOmitX, GlobOmit] = BSGlobOmit(fun,A,B,freq,N)
+function [GlobOmitX, GlobOmit] = BSGlobOmit(fun,A,B,freq,N,Qx,Qw)
 %Global quadrature with singularity omission method for Biot Savart.
 %Calculate the velocity at every 1 out of 'freq' quadrature points by 
 %integrating the whole domain with a GL quadrature of order N-1 (omitting 
 %the eval point in the sum). Where fun is the vorticity density funciton 
 %and A and B are the bounds of the self-region.
 %h = waitbar(0,'Initializing GL points please wait...');
-[Qx,Qw]=GLquad(N);
 Qx = Qx*(B-A)/2+(B+A)/2;
 
 saved=1;

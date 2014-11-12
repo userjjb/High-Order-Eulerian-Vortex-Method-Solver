@@ -1,12 +1,17 @@
 close all
 clear all
-N=450;
+del = 0.001;
+B= 1/2;
+A= -1/2;
+for N=1:12;
 [Qx, Qw]=GLquad(N);
+Qx = Qx*(B-A)/2+(B+A)/2;
 
-del = 0.0001;
-xx = del:.001:1;
-fun = @(x) 1./(x.^2);
-interp = Lagrange(xx,fun,del,1,Qx);
-plot(xx,interp)
-Qw*(1./(Qx*(1-del)/2+(1+del)/2).^2)
-
+% xx = A:.0001:B;
+% fun = @(x) cos(pi.*x);
+% interp = Lagrange(xx,fun,A,B,Qx);
+% plot(xx,interp)
+I(N)=Qw*cos(pi*Qx);
+end
+I=I/2;
+plot (1:12,log(abs(2/pi-I)))
