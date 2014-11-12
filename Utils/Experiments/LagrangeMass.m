@@ -1,9 +1,13 @@
+%Compares the structure of the mass matrix (and it's inverse) for a 
+%Lagrange basis for a choice of two interpolation node sets: Gauss-Legendre
+%and Lobatto-Gauss-Legendre.
+%The GL choice is a trivially invertible diagonal matrix, the LGL is not
 function [M,M_] = LagrangeMass(m,Type)
 switch Type
     case 'GL'
-        [n,~] = GL_Quad(m);
+        [n,~] = GLquad(m);
     case 'LGL'
-        [n,~,~] = LGL_Quad(m);
+        [n,~,~] = LGLquad(m);
     otherwise
         return
 end

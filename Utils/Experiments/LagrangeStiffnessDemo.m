@@ -1,4 +1,4 @@
-function saved = LagrangeStiffness(n)
+function saved = LagrangeStiffnessDemo(n)
 saved=zeros(n,2);
 for q=1:n
     [exact,interp] = Scratch(n,q);
@@ -12,7 +12,7 @@ end
     
 %Calculate stiffness
 function [exact,interp,Ld_q] = Scratch(m,q)
-[nd,w]=gauss(m);
+[nd,w]=GLquad(m);
 
 c2 = 20/100;
 b=-.2;
