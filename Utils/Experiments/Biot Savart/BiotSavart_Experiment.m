@@ -15,13 +15,13 @@ hold on
 plot(xx,10*fun(xx),'k') %Exaggerate vorticity function for display purposes
 
 %Domain decomposition method
-[DecompX, DecompV] = BSDecomp(fun,A,B,2000,3);
+[DecompX, DecompV] = BSDecomp(fun,A,B,100,3);
 plot(DecompX,DecompV,'b')
 
 %Improved decomp method with hp-adaptivity
 del2 = (B-A)/1000;
 truncated = DecompX(DecompX-del2>A&DecompX+del2<B);
-[deltax, map, Qw] = AdapElem(A,B,200,10,del2,truncated);
+[deltax, map, Qw] = AdapElem(A,B,100,10,del2,truncated);
 [DecompImp] = BSDecompImp(fun,A,B,truncated,deltax,map,Qw);
 plot(truncated,DecompImp,'m')
 text(truncated(find(max(DecompImp)==DecompImp)),max(DecompImp),num2str(max(DecompImp)));
@@ -40,7 +40,7 @@ text(truncated(find(max(DecompImp)==DecompImp)),max(DecompImp),num2str(max(Decom
 % end
 % plot(Centroids(resolve),Decomp+ExtR+ExtL,':b')
 
-N=200;
+N=20;
 del = (B-A)/200;
 [Qx,Qw]=GLquad(N);
 %Global quadrature with singularity omission
@@ -56,8 +56,8 @@ plot(WinLeonX,WinLeon,'c')
 %axis([0,1,0,50])
 
 %Split Quadrature
-[Split] = BSSplit(fun,A,B,GlobOmitX,6);
-plot(GlobOmitX,Split(1,:)+Split(2,:),'g')
+% [Split] = BSSplit(fun,A,B,GlobOmitX,6);
+% plot(GlobOmitX,Split(1,:)+Split(2,:),'--g')
 
 % %Near/Far Split Quadrature method
 % [NFSplit] = BSNFSplit(fun,A,B,GlobOmitX,100,0.01,0);
