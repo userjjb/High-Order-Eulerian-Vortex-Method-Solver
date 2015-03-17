@@ -1,77 +1,140 @@
 \documentclass[letterpaper,12pt]{report}
+\usepackage[english]{babel}							%For internationalization
+\usepackage[utf8]{inputenc}							%For character encoding
+\usepackage{amsmath}								%For mathematical typesetting
+\usepackage{graphicx}								%For handling graphics
+\usepackage[top=1in, bottom=1in, left=1.5in, right=1in]{geometry}	%Sets required thesis margins
+\usepackage[nodisplayskipstretch,doublespacing]{setspace} 		%Sets required thesis double spacing
+\usepackage{titlesec} 								%Used to easily redefine section title styles
 
-\usepackage[english]{babel}
-\usepackage[utf8]{inputenc}
-\usepackage{amsmath}
-\usepackage{graphicx}
-\usepackage[top=1in, bottom=1in, left=1.5in, right=1in]{geometry}
-\usepackage[doublespacing]{setspace}
-\usepackage{titlesec}
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ben}[1]{\begin{equation}\label{#1}}
+\newcommand{\ee}{\end{equation}}
 
 \title{Vortex Dominated Flows: A High-Order, Conservative Eulerian Simulation Method}
-
 \author{Josh Bevan}
-
 \date{\today}
 
+%Set section formats so chapters, sections, and subsections are 14ish pt
 \titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
 \titleformat{\subsection}{\normalsize\bfseries}{\thesection}{1em}{}
+\titleformat{\chapter}{\large\bfseries}{\thechapter}{1em}{}
+	\titlespacing*{\chapter}{0pt}{.7in}{0pt} %Add whitespace above chapter title to get a 2in margin
 
+%Frontmatter----------------------------------------------------------------------
 \begin{document}
+\pagenumbering{roman} %Roman numbering for frontmatter
 \maketitle
-%------------------------------------
 \begin{abstract}
+\setcounter{page}{2} %Manual page numbering because 'abstract' is annoying
+\thispagestyle{plain} %Needed to show page number as pagestyle was reset to 'empty' when \maketitle is called internally
 A high-order, conservative Eulerian method is presented for the simulation of vortex dominated inviscid fluid flows. The primitive variable Navier-Stokes equations are recast in the velocity-vorticity form to explicitly enforce conservation of vorticity. The advection of the vorticity is then calculated via a two-step process each time-step: the velocity field is determined by evaluation of the Biot-Savart integral, and then a line-based discontinuous Galerkin (DG) Eulerian spatial discretization scheme is applied. The accuracy and convergence of this method is examined for test cases where an analytical solution exists, as well as more challenging test cases which lack an analytical solution. Of particular interest is the influence the discretization of the calculated velocity field has on the performance of the method.
 \end{abstract}
 
-%------------------------------------
-\section{Introduction}
-\subsection{Problem Formulation}
+\setcounter{page}{3} %Manual page numbering because 'abstract' is annoying
+\chapter*{Acknowledgments}
+\begin{singlespace} %Tables should be single spaced
+\tableofcontents
+\listoftables
+\addcontentsline{toc}{section}{List of Tables}
+\listoffigures
+\addcontentsline{toc}{section}{List of Figures}
+\end{singlespace}
+
+%Here we change the pagestyle so that the page number appears top right. We need to redefine the \chapter command to change the default pagestyle from 'plain' to 'myheadings'
+\pagestyle{myheadings}
+\makeatletter
+\renewcommand\chapter{\if@openright\cleardoublepage\else\clearpage\fi
+                    \thispagestyle{myheadings}% original style: plain
+                    \global\@topnum\z@
+                    \@afterindentfalse
+                    \secdef\@chapter\@schapter}
+\makeatother
+
+%Mainmatter-----------------------------------------------------------------------
+\chapter{Introduction}
+\pagenumbering{arabic} %Reset to arabic numbering for mainmatter
+\section{Problem Formulation}
 -DNS expensive \\
 -For inviscid vortex dominated flows $\rightarrow$ reformulate from primitive variables to velocity-vorticity \\
 -Existing methods: Lagrangian vortex particle methods [Carley, Strain, Leonard] and VTM [Brown]\\
 -Difficulty extending to high order: Particle methods (re-meshing), VTM (extended stencil)\\
 -Available high order methods unsuitable: FD/FV (extended stencil and smearing), FE (non-conservative, ill-suited for hyperbolic), Spectral (Globally defined vs concentrated sparse vorticity)
-\subsection{Chosen Methods}
+\section{Chosen Methods}
 -DG: conservative, local, flux funs handle hyperbolicity\\
 -Line DG easy implementation for hexahedral meshes. Tensor product points allow possibility of easy biasing along principal flow directions. Allow easy translation of 1D methods for multidimensional domains\\
 -Direct evaluation of BS integral: allows investigation of local order refinement effects on global convergence
-\subsection{Thesis Structure}
+\section{Thesis Structure}
 -Theory: Develop method specific mathematics (DG, VTM, BS, etc)\\
 -Methodology: Cover relevant notable implementation specifics (e.g. Solver structure, non-trivial algorithms), present convergence test structure (analytical cases, elliptical blob, 2-D "ring",several interacting patches) vs (convergence rate of: constant order velocity field, linear far field velocity [far= 1 element or X element separation], variable far field velocity order [heuristic?])\\
 -Results: Results of matrix of tests (summary with aggregate plots, and selected results)\\
 -Discussion: Analytical validation, comparison of velocity field fidelity test, comments on effects of global convergence
 
 %------------------------------------
-\section{Theory}
-\subsection{Navier-Stokes: Velocity-vorticity form}
-Quick derivation
-\subsection{Discontinuous Galerkin}
-Derivation with expansion on non-linear flux, salient points from line-DG
-\subsection{Velocity Field Evaluation: The Biot-Savart Integral}
+\chapter{Theory}
+\section{Navier-Stokes: Velocity-vorticity form}
+If we define the quantity vorticity as
+\be \omega = \nabla \times u \ee
+Then we can recast the traditional form of the Navier-Stokes equations, assuming an inviscid incompressible flow we have:
+\ben{VV3D} \frac{\partial \omega}{\partial t} + u \cdot \nabla \omega - \omega \cdot \nabla u = S(x,t)\ee
+
+There are several benefits to the recast form: explicitly conserving vorticity, sparseness, pressure term need not be solved for... [elaborate]
+
+If we restrict ourselves to examining 2-D distributions of vorticity, then we can make several simplifications. The originally vectorial vorticity becomes a scalar quantity, all vorticity is directed normal to the plane. As a result, the vortex stretching term in \eqref{VV3D} becomes zero. The only non-zero component of $\omega$ is in the z-direction, however the gradient of the velocity field is zero in the z-direction, so the product is therefore zero. The result is
+\ben{VV2D} \frac{\partial \omega}{\partial t} + u \cdot \nabla \omega = S(x,t)\ee
+
+\section{Velocity Field Evaluation: The Biot-Savart Integral}
+We shall decide that $\omega$ is the quantity of interest in the solution method. However, if this is the case then the question must be posed: how does one determine the velocity field? For an incompressible flow we have:
+\be \nabla^2 u = -\nabla \times \omega \ee
+If inverted, we obtain the Biot-Savart integral:
+\ben{BS} u(x^*) = \int_\Omega K(x^*,x) \times \omega(x) dx \ee
+with the singular Biot-Savart kernel
+\ben{BSkern} K(x^*,x) = \frac{-1}{4 \pi} \frac{x^*-x}{|x^*-x|^3} \ee
+
+There are several important points to note that are a consequence of this inversion. First, rather than solving the Poisson equation for the entirety of the domain we can choose to evaluate the velocity at some subset. For the purposes of advecting the velocity we will only need velocities near the vorticity itself. However, if the number of required velocity evaluation points is roughly proportional to the $N$ DOFs of our vorticity approximation, then we might expect the velocity calculations to scale as $\mathcal{O}(N^2)$.
+
+There are numerous methods to reduce the computational complexity of similar N-body type problems to $\mathcal{O}(NlogN)$ or $\mathcal{O}(N)$. Cyclic reduction [Schumann, Sweet 1976], tree-codes [Lindsay/Krasny][Barnes-Hut], and FMM [Greengard] are all possibilities. However, because the velocity field calculation method is essentially decoupled from the discretization of the PDE, there is no a priori assurance that the velocity calculated is of sufficient fidelity to ensure convergence of the overall method (let alone convergence at the order one might expect based on solely the discretization). For maximum flexibility in investigating this dependency of overall convergence on the calculated velocity field we shall eschew more efficient techniques so that we can directly control the fidelity of the velocity field.
+
+The second point to consider regarding the Biot-Savart integral is the singular nature of the exact kernel. Lagrangian point vortex methods have the benefit that the singularity and it's associated non-physical velocities occur in a relatively small region; they assume that the advective effect of the point vortex on itself is negligble [hazy on this, clarify some]. Additionally they will frequently de-singularize the kernel by introducing a core function. The classical one used is the Rosenhead-Moore kernel [ref here]:
+\ben{RMkern} K(x^*,x) = \frac{-1}{4 \pi} \frac{x^*-x}{(|x^*-x|^2+\sigma^2)^{3/2}} \ee
+
+The high-order Eulerian approach taken here however means that the Biot-Savart integral diverges everywhere within any of the extended vorticity patches thanks to self-influence.
+
+
 Expense of calculation (\% of total program?), Self-terms: Subsplitting vs GL quadrature skip vs kernels
-\section{Methodology}
-\subsection{Overall Solver Structure}
+
+\section{Discontinuous Galerkin}
+In order to solve \eqref{VV2D} we adopt a method-of-lines approach. We will first spatially discretize the system to obtain the semi-discrete system, then we use an explicit time discretization method to march forward in time. It is worth noting that \eqref{VV2D} has the form of a scalar conservation law, with $\omega$ being the conserved quantity. The velocity field that advects the conserved quantity must be specified 
+
+It is very likely that our spatial discretization means that the best we can achieve is an approximate solution to \eqref{VV2D}, that we shall call
+
+%------------------------------------
+\chapter{Methodology}
+\section{Overall Solver Structure}
 IC and BC initialization, Lagrange pre-calculation, mass and stiffness matrices generation, 2 step spatial discretization, time discretization, post processing
-\subsection{Algorithms of Note}
+\section{Algorithms of Note}
 Vectorized Lagrange evaluation, Lagrange derivatives, etc
-\subsection{Validation and Convergence of Proposed Methods}
+\section{Validation and Convergence of Proposed Methods}
 (analytical cases, elliptical blob, 2-D "ring",several interacting patches) vs (convergence rate of: constant order velocity field, linear far field velocity [far= 1 element or X element separation], variable far field velocity order [heuristic?])
-\section{Results}
-\subsection{Analytical Test Cases}
-\subsection{Elliptical Blob}
-\subsection{Arbitrary Patch}
-\subsection{Dipole(misuse of term?)}
-\subsection{Vortical System}
-\section{Discussion}
-\subsection{Analytical Validation of Model}
+%------------------------------------
+\chapter{Results}
+\section{Analytical Test Cases}
+\section{Elliptical Blob}
+\section{Arbitrary Patch}
+\section{Dipole(misuse of term?)}
+\section{Vortical System}
+%------------------------------------
+\chapter{Discussion}
+\section{Analytical Validation of Model}
 Comparison of existing analytical solutions vs model (Euler vortex, 5th order poly, other Saffmann test cases)
-\subsection{}
-\section{Conclusion}
-\subsection{Weak Formulation}
-\section{Recommendations}
-\subsection{Weak Formulation}
-\section{Literature Cited}
+\section{}
+%------------------------------------
+\chapter{Conclusion}
+\section{Weak Formulation}
+%------------------------------------
+\chapter{Recommendations}
+%------------------------------------
+\chapter{Literature Cited}
 \begin{figure}
 \centering
 \includegraphics[width=1.4\textwidth]{LitStart.PNG}

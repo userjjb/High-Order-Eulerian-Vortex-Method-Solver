@@ -6,7 +6,7 @@ close all
 clear all
 tau=2*pi();
 
-N=3; %Order of spatial discretization
+N=5; %Order of spatial discretization
 K=32;%Number of elements
 
 %--Here we attempt to solve the 1D scalar conservation eqn of the form:
@@ -55,12 +55,20 @@ end
 %resulting from the Gauss-Legendre quadrature.
 %--The simplified result is \overset{m}{a} =
 %(m+.5) \sum_{i=1}^N Qw_i sin(2\pi \tilde{x}(x) ) \overset{n}{\phi}(x_i)
+%
+%Some possible IVPs:
+%Mollifier
+%BasisWeights(k,m+1) = (m+.5)*sum(Qw.*heaviside((map(k,:)-0.375)).*exp(-1./(1-((8*map(k,:)-4).^2))).*heaviside(0.625-(map(k,:))).*L(:,m+1)');
+%Gaussian w/ small discontinuity
+%BasisWeights(k,m+1) = (m+.5)*sum(Qw.*max(0,exp(-(map(k,:)-0.5).^2/.01)-10^-1).*L(:,m+1)');
+%Periodic sin()
+%BasisWeights(k,m+1) = (m+.5)*sum(Qw.*sin(tau*map(k,:)).*L(:,m+1)');
 BasisWeights = zeros(K,N+1);
 map = zeros(K,N+1);
 for k=1:K
     map(k,:) = (elemBC(k,2)-elemBC(k,1))*Qx/2 + (elemBC(k,1)+elemBC(k,2))/2;
     for m=0:N
-        BasisWeights(k,m+1) = (m+.5)*sum(Qw.*sin(tau*map(k,:)).*L(:,m+1)');
+        BasisWeights(k,m+1) = (m+.5)*sum(Qw.*heaviside((map(k,:)-0.375)).*exp(-1./(1-((8*map(k,:)-4).^2))).*heaviside(0.625-(map(k,:))).*L(:,m+1)');
     end
 end
 
@@ -101,7 +109,7 @@ BasisWeights = reshape(BasisWeights',K*(N+1),1);
 %--Discretize in time and plot
 deltaT  = 0.001;
 saveT   = 0.01; %How often do we save the current state for plotting?
-endT    = 10;
+endT    = 5;
 nsaveT  = floor(saveT/deltaT);
 nT      = floor(endT/deltaT);
 saved   = zeros(K*(N+1),(nT/nsaveT)+1);
