@@ -2,19 +2,25 @@ clc
 close all
 clear all
 
-dx=.06;
+dx=.08;
 A=dx^2*10;
-[VortX,VortY]=meshgrid(-2:dx:2,-2:dx:2);
-a=.5;
-b=1;
+[VortX,VortY]=meshgrid(-1:dx:1,-1:dx:1);
+a=.25;
+b=.25;
 VortF=A*exp(-(VortX.^2/a+VortY.^2/b));
-mask=VortF>0.01*A;
+mask=VortF>0.02*A;
 
 n=numel(VortF(mask));
 
 VortX=single(reshape(VortX(mask),n,1));
 VortY=single(reshape(VortY(mask),n,1));
 VortF=single(reshape(VortF(mask),n,1));
+
+%Clone for a vortex pair
+VortX=[VortX-4; VortX+4];
+VortY=repmat(VortY,2,1);
+VortF=[VortF; -VortF];
+n=numel(VortF);
 
 figure;
 pause(0.00001);
@@ -23,11 +29,11 @@ set(frame_h,'Maximized',1);
 pause(1);
 
 q=1;
-dt=0.005;
-for t=0:dt:1
+dt=0.01;
+for t=0:dt:10
     plot(VortX,VortY,'.')
-    axis([-3 3 -3 3])
-    axis square
+    axis([-6 6 -3 3])
+    axis equal
     text(2.02,2,num2str(t));
     pause(0.001)
     
