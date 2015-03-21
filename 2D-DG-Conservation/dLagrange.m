@@ -1,10 +1,10 @@
 %Evaluate the value of the derivative of a Nth order Lagrange interpolation
 %at the intepolation points x_i (GL quad points) for each of the basis
 %vectors and return a NxN matrix where Stiffness(n,i)=L_n'(x_i)
-function Stiffness = LagrangeStiffness(N)
+function dL = dLagrange(N)
     [Qx,Qw]=GLquad(N);
     for n=1:N
-        Stiffness(n,:) = LagBasisD_n(N,n,Qx).*Qw;
+        dL(n,:) = LagBasisD_n(N,n,Qx);
     end
 end
 
