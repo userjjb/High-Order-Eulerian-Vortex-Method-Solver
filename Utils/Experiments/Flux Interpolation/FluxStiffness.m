@@ -44,21 +44,30 @@ N=11;
 [nd,w] = gauss(N);
 
 %Build out the funs for our Lagrange basis and it's derivative
-Lag= @(x,n) prod(bsxfun(@rdivide,bsxfun(@minus,x,nd([1:n-1,n+1:N])),bsxfun(@minus,nd(n),nd([1:n-1,n+1:N]))));
+%This builds a left slice of 'NOn's for each n
+nn=ones(N,1,N-1);
+for n=1:N
+    nn(n,:,:)=nd([1:n-1,n+1:N]);
+end
+%x is a row vec of eval points, nv is a row vec of desired basis numbers
+%bsxfun is so useful! Singleton dimensions for an arg get iterated over the
+%dim of the other arg if it is non-singleton. Our vector of Lagrange basis
+%numbers we are interested is nv. We sweep the vector nd(nv) over the
+%selected part of the left slice nn to calc the denominator x_n-x_i
+%Next we expand our selected left slice to the right by subtracting it from
+%the row vec of our eval points (x) generating a 3D array of x-x_i for each
+%n. We then divide our 3D array, sweeping our left slice denominator right.
+%We then finally flatten our 3D array into a matrix, taking the product
+%along the 3rd dim to calc prod( (x-x_i)/(x_n-x_i) ) for all terms i.
+Lag= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(nv,:,:)),bsxfun(@minus,nd(nv),nn(nv,:,:))),3);
 dift= @(x,n) sum(1./bsxfun(@minus,x,nd([1:n-1,n+1:N])));
 dLag= @(x,n) Lag(x,n).*dift(x,n);
 
-%I haven't come up with a clever way to generate an arbitrary order interp
-%fun on the fly, this will have to do...
-%many term matrix saved here for convenience, delete terms as needed
-%ev=@(x) [Lag(x,1)',Lag(x,2)',Lag(x,3)',Lag(x,4)',Lag(x,5)',Lag(x,6)',Lag(x,7)',Lag(x,8)',Lag(x,9)',Lag(x,10)',Lag(x,11)',Lag(x,12)',Lag(x,13)',Lag(x,14)',Lag(x,15)',Lag(x,16)']';
-ev=@(x) [Lag(x,1)',Lag(x,2)',Lag(x,3)',Lag(x,4)',Lag(x,5)',Lag(x,6)',Lag(x,7)',Lag(x,8)',Lag(x,9)',Lag(x,10)',Lag(x,11)']';
-
-interp_s=@(x) s(nd')*ev(x);
-interp_g=@(x) g(nd')*ev(x);
+interp_s=@(x) s(nd')*Lag(x,1:N);
+interp_g=@(x) g(nd')*Lag(x,1:N);
 interp_sg=@(x) interp_s(x).*interp_g(x);    %Product of interps
 
-interp_s_g=@(x) s_g(nd')*ev(x);             %Interp of product
+interp_s_g=@(x) s_g(nd')*Lag(x,1:N);             %Interp of product
 
 n=6; %Particular Lagrange basis function n<=N
 stiff= @(x) s_g(x).*dLag(x,n);              %Exact-ish term to be used in stiffness integral
@@ -117,7 +126,7 @@ tot1=0;
 for i=1:N
     for j=1:N
         for k=1:N
-            tot1=tot1+( s(nd(i))*g(nd(j))*dLag(nd(k)-eps(1),6)*W(i,j,k) );
+            tot1=tot1+( s(nd(i))*g(nd(j))*dLag(nd(k)-eps(nd(k)),6)*W(i,j,k) );
         end
     end
 end
@@ -175,3 +184,27 @@ fprintf('%.17f Stiff:Prod of In MyQuad(Quad N^2 vect)\n',res(4)-res(11));
 %program in PolyVandLag.m, but it suffers from accumulated precision errors
 %Lag11_6= @(x,A,B,C,D,E) (x.^10 - x.^8*(A+B+C+D+E) + x.^6*(A*B + (A+B)*C + (A+B+C)*D + (A+B+C+D)*E) - x.^4*(D*E*(B+C) + B*C*(D+E) + A*(B*(C+D+E)+C*(D+E)+D*E)) + x.^2*(C*D*E*(A+B) + A*(B*(C*(D+E)+D*E))) - A*B*C*D*E)/-(A*B*C*D*E);
 %Lag9_5= @(x,A,B,C,D) (x.^8 - x.^6*(A+B+C+D) + x.^4*(A*B+C*(A+B)+D*(A+B+C)) - x.^2*(A*B*C+D*(A*B+C*(A+B))) + A*B*C*D)/-(A*B*C*D)
+
+%Let's compare GL quad to LGL quad of equivalent order 2(10)-3 = 2(9)-1 to
+%see if it would be any better
+%10 node Lobatto quad weights and nodes from A&S
+Bx= [1; .9195339082; .7387738651; .4779249498; .1652789577];
+Bx= [-Bx; flipud(Bx)];
+Bw= [1/45; .1333059908; .2248893420; .2920426836; .3275397612];
+Bw= [Bw; flipud(Bw)];
+
+M=10;
+nn2=ones(M,1,M-1);
+for n=1:M
+    nn2(n,:,:)=Bx([1:n-1,n+1:M]);
+end
+Lag2= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn2(nv,:,:)),bsxfun(@minus,nd(nv),nn2(nv,:,:))),3);
+dift2= @(x,m) sum(1./bsxfun(@minus,x,Bx([1:m-1,m+1:M])));
+dLag2= @(x,m) Lag2(x,m).*dift2(x,m);
+
+m=4;
+ff=@(x) s_g(x).*dLag2(x,m);
+res(12)=integral(ff,-1,1,'RelTol',1e-14,'AbsTol',1e-16);
+fprintf('%.17f Stiff:In of Prod LGL\n',res(12));
+res(13)=(s_g(Bx').*dLag2(Bx'-eps(Bx'),m))*Bw;
+fprintf('%.17f Stiff:In of Prod LGL (Quad)\n',res(12)-res(13));
