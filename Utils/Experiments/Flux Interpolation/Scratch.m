@@ -7,7 +7,7 @@ nn=elim(Qx(1:M)',Qx(1:M)',[1 3 2]);
 Lag2= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(nv,:,:)),bsxfun(@minus,Qx(nv),nn(nv,:,:))),3);
 
 s = @(x) sin(pi*x);
-    c2 = 20/100;
+    c2 = 40/100;
     b=-.2;
 g = @(x) exp(-(x-b).^2/(2*c2));
 s_g=@(x) s(x).*g(x);
@@ -50,11 +50,12 @@ for N=3:20
         end
     end
     Q(N,9)=(interp_s(Qx')*W2)*interp_g(Qx')';
-    Q(N,13)=(N-2);
+    
+    Q(N,15)=(N-2);
 end
 Q(:,1)=Q(:,3)-Q(:,4);
 Q(:,2)=Q(:,3)-Q(:,5);
 
-Q(:,10)=Q(:,4)-Q(:,6);
-Q(:,11)=Q(:,4)-Q(:,8);
-Q(:,12)=Q(:,5)-Q(:,9);
+Q(:,11)=Q(:,4)-Q(:,6);
+Q(:,12)=Q(:,4)-Q(:,8);
+Q(:,13)=Q(:,5)-Q(:,9);
