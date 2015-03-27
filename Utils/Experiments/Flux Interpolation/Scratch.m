@@ -1,10 +1,14 @@
 clear all
 
-M=9;
-[Qx,Qw]= GLquad(M);
+P=10;
+[Qx,Qw]= GLquad(P);
+pp=elim(Qx(1:P)',Qx(1:P)',[1 3 2]);
+Lag3= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,pp(nv,:,:)),bsxfun(@minus,Qx(nv),pp(nv,:,:))),3);
 
-nn=elim(Qx(1:M)',Qx(1:M)',[1 3 2]);
-Lag2= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(nv,:,:)),bsxfun(@minus,Qx(nv),nn(nv,:,:))),3);
+R=12;
+[Qx2,Qw2]= GLquad(R);
+rr=elim(Qx2(1:R)',Qx2(1:R)',[1 3 2]);
+Lag4= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,rr(nv,:,:)),bsxfun(@minus,Qx2(nv),rr(nv,:,:))),3);
 
 s = @(x) sin(pi*x);
     c2 = 40/100;
@@ -12,17 +16,21 @@ s = @(x) sin(pi*x);
 g = @(x) exp(-(x-b).^2/(2*c2));
 s_g=@(x) s(x).*g(x);
 
-for N=3:20
-    [nd,w] = gauss(N);
+for N=3:15
+    [nd,w] = GLquad(N);
+    M=N+1;
+    [nd2,w2] = GLquad(M);
     
+    %Fully vectorized for both x and nv
     nn=elim(nd(1:N)',nd(1:N)',[1 3 2]);
     Lag= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(nv,:,:)),bsxfun(@minus,nd(nv),nn(nv,:,:))),3);
-    dift= @(x,n) sum(1./bsxfun(@minus,x,nd([1:n-1,n+1:N])));
-    dLag= @(x,n) Lag(x,n).*dift(x,n);
+    nn2=elim(nd2(1:M)',nd2(1:M)',[1 3 2]);
+    Lag2= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn2(nv,:,:)),bsxfun(@minus,nd2(nv),nn2(nv,:,:))),3);
+    dLag= @(x,nv) Lag(x,nv).*sum(1./bsxfun(@minus,x,nn(nv,:,:)),3);
     
     interp_s=@(x) s(nd')*Lag(x,1:N);
-    interp_g=@(x) g(nd')*Lag(x,1:N);
-    interp_s_g=@(x) s_g(nd')*Lag(x,1:N);
+    interp_g=@(x) g(nd2')*Lag2(x,1:M);
+    interp_s_g=@(x) s_g(nd2')*Lag2(x,1:M);
     interp_sg=@(x) interp_s(x).*interp_g(x);
     
     n=floor(N/2);
@@ -43,15 +51,15 @@ for N=3:20
     end
     Q(N,8)=interp_s_g(Qx')*W';
     
-    for i=1:M
-        for j=1:M
-                trip=@(x) Lag2(x,i).*Lag2(x,j).*dLag(x,n);
+    for i=1:P
+        for j=1:R
+                trip=@(x) Lag3(x,i).*Lag4(x,j).*dLag(x,n);
                 W2(i,j)=integral(trip,-1,1,'RelTol',1e-14,'AbsTol',1e-15);
         end
     end
-    Q(N,9)=(interp_s(Qx')*W2)*interp_g(Qx')';
+    Q(N,9)=(interp_s(Qx')*W2)*interp_g(Qx2')';
     
-    Q(N,15)=(N-2);
+    Q(N,15)=(N-1)+(M-1);
 end
 Q(:,1)=Q(:,3)-Q(:,4);
 Q(:,2)=Q(:,3)-Q(:,5);
