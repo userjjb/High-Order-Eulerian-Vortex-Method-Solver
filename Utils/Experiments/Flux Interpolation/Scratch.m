@@ -5,8 +5,8 @@ P=10;
 pp=elim(Qx(1:P)',Qx(1:P)',[1 3 2]);
 Lag3= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,pp(nv,:,:)),bsxfun(@minus,Qx(nv),pp(nv,:,:))),3);
 
-R=12;
-[Qx2,Qw2]= GLquad(R);
+R=10;
+[Qx2,Qw2]= LGLquad(R);
 rr=elim(Qx2(1:R)',Qx2(1:R)',[1 3 2]);
 Lag4= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,rr(nv,:,:)),bsxfun(@minus,Qx2(nv),rr(nv,:,:))),3);
 
@@ -18,7 +18,7 @@ s_g=@(x) s(x).*g(x);
 
 for N=3:15
     [nd,w] = GLquad(N);
-    M=N+1;
+    M=N;
     [nd2,w2] = GLquad(M);
     
     %Fully vectorized for both x and nv
@@ -45,8 +45,8 @@ for N=3:15
     Q(N,6)=stiff_s_g(Qx')*Qw';
     Q(N,7)=stiff_sg(Qx')*Qw';
         
-    for i=1:M
-        duo=@(x) Lag2(x,i).*dLag(x,n);
+    for i=1:P
+        duo=@(x) Lag3(x,i).*dLag(x,n);
         W(i)=integral(duo,-1,1,'RelTol',1e-14,'AbsTol',1e-15);
     end
     Q(N,8)=interp_s_g(Qx')*W';
@@ -67,3 +67,4 @@ Q(:,2)=Q(:,3)-Q(:,5);
 Q(:,11)=Q(:,4)-Q(:,6);
 Q(:,12)=Q(:,4)-Q(:,8);
 Q(:,13)=Q(:,5)-Q(:,9);
+Q(:,14)=Q(:,3)-Q(:,9);
