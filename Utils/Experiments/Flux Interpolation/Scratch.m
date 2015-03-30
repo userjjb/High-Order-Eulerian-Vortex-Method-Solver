@@ -68,3 +68,10 @@ Q(:,11)=Q(:,4)-Q(:,6);
 Q(:,12)=Q(:,4)-Q(:,8);
 Q(:,13)=Q(:,5)-Q(:,9);
 Q(:,14)=Q(:,3)-Q(:,9);
+
+%Here's a 2D interpolation that accepts and returns arrays
+interp_g=@(x,y) reshape(diag(Lag(reshape(x,1,[]),1:N)'*(G*Lag(reshape(y,1,[]),1:N)))',size(x));
+%Here's the same one, but only accepts row vecs
+interp_g=@(x,y) diag(Lag(x,1:N)'*(G*Lag(y,1:N)))';
+%Here's the same one, that returns a tensor product of x and y
+interp_g=@(x,y) Lag(x,1:N)'*(G*Lag(y,1:N));
