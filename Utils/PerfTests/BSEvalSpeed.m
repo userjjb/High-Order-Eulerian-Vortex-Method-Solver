@@ -1,9 +1,7 @@
 clear all
 
-n=4;
-a=12; %Np
-c=a*100*100; %Np x elems_x x elems_y
-nn=a; %W_Np
+Np=12;
+N=.1*100^2; %Vorticity elements
 
 topm = 4;
 Cr = cell(6,topm+1);
@@ -36,16 +34,18 @@ disp(' ');
 disp('--------------------------------------------------------------');
 disp('(real 3x3x1000000) * (real 3x3x1000000) example');
 Cr{3,1} = '(3x3xN) *(3x3xN)';
-A = rand(a,a,c,nn);
-B = rand(a,1,c);
-BB = rand(1,a,c);
+w = rand(Np,Np,N);
+Qw = rand(Np,1);
+Qwt = rand(1,Np);
+r= rand(Np,Np,N,N);
 
 % mtimesx
+n =4;
 tx = zeros(1,n);
 for k=1:n
 clear Cx
 tic
-Cx = mtimesx(BB,mtimesx(A,B));
+Cx = mtimesx(Qwt,mtimesx(bsxfun(@times,w,r),Qw));
 tx(k) = toc;
 end
 % results
