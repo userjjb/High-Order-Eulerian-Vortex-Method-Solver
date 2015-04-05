@@ -1,7 +1,7 @@
 clear all
 
-Np=12;
-N=.1*100^2; %Vorticity elements
+Np=8;
+N=.1*40^2; %Vorticity elements
 
 topm = 4;
 Cr = cell(6,topm+1);
@@ -37,7 +37,7 @@ Cr{3,1} = '(3x3xN) *(3x3xN)';
 w = rand(Np,Np,N);
 Qw = rand(Np,1);
 Qwt = rand(1,Np);
-r= rand(Np,Np,N,N);
+r= rand(Np,Np,N,N*Np^2);
 
 % mtimesx
 n =4;
