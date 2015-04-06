@@ -73,7 +73,6 @@ SemiMatrix(end+1-size(Stencil,1):end,end+1-size(Stencil,2):end)=Stencil;
 SemiMatrix = SemiMatrix./deltax(1);
 
 BasisWeights = reshape(BasisWeights,N*K,1);
-cats = BasisWeights;
 
 %--Discretize in time and plot
 deltaT= .0001;
@@ -102,10 +101,10 @@ j=0;
 
 h=figure;set(gcf, 'Color','white')
 nFrames = length(saved);
-vidObj = VideoWriter('1DConvDG.avi');
-vidObj.Quality = 100;
-vidObj.FrameRate = floor(nFrames/(2*endT));
-open(vidObj);
+% vidObj = VideoWriter('1DConvDG.avi');
+% vidObj.Quality = 100;
+% vidObj.FrameRate = floor(nFrames/(2*endT));
+% open(vidObj);
 
 for i=1:length(saved)
     plot(xh',saved(:,:,i))
@@ -119,9 +118,9 @@ for i=1:length(saved)
     text(1.02,-.3,num2str(rms(reshape(saved(2,:,i),K,1))));
     text(1.02,1.1,'Time')
     text(1.02,1,num2str((i-1)*saveT));
-    writeVideo(vidObj, getframe(h));
-    %pause(.01)
+    %writeVideo(vidObj, getframe(h));
+    pause(.01)
 end
 
-close(gcf)
-close(vidObj);
+%close(gcf)
+%close(vidObj);

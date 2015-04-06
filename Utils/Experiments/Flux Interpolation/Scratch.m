@@ -1,4 +1,4 @@
-clear all
+    clear all
 
 P=10;
 [Qx,Qw]= GLquad(P);

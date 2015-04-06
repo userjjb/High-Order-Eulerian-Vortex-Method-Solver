@@ -1,6 +1,11 @@
-Np=5; %Number of interp points along one direction in one elem
-K=.1*40; %Non-zero elements in one direction
+clear all
+
+Np=8; %Number of interp points along one direction in one elem
+K=40; %Non-zero elements in one direction
 N=K^2; %Total non-zero elements
+
+v=rand(Np*K,Np*K);
+w=rand(Np*K,Np*K);
 
 %Stencil for particular point with self ref and num flux ref
 %To right
@@ -29,19 +34,20 @@ j=zeros(Np^2*N,Np*2);
 %point. If the element_x of a stream is on the left or right, it may wrap to
 %the right or left respectively for periodic BCs on that stream
 for elem_y=(0:K-1)*Np*K*Np
+    spr= randi([0,3],1);
     for stream_y=(0:Np-1)*Np*K
         elem_x=0;
         for point=1:Np
-            j(elem_y+stream_y+elem_x+point,:)=Choose(randi([0,1],1)*3+1,:);
+            j(elem_y+stream_y+elem_x+point,:)=0^spr*Choose(randi([0,1],1)*3+1,:);
         end
         for elem_x=(1:K-2)*Np
             for point=1:Np
-                j(elem_y+stream_y+elem_x+point,:)=Choose(randi(2,1),:);
+                j(elem_y+stream_y+elem_x+point,:)=0^spr*Choose(randi(2,1),:);
             end
         end
         elem_x=(K-1)*Np;
         for point=1:Np
-            j(elem_y+stream_y+elem_x+point,:)=Choose(randi([2,3],1),:);
+            j(elem_y+stream_y+elem_x+point,:)=0^spr*Choose(randi([2,3],1),:);
         end
     end
 end
@@ -55,6 +61,15 @@ j(end-(Np-1):end,:)=repmat(Choose(2,:),Np,1);
 advance=reshape(repmat(0:Np:K*(Np*(Np*K))-1,Np,1),[],1);
 j=reshape(bsxfun(@plus,j,advance)',[],1);
 
+B=rand;
 A=sparse(i,j,s,Np^2*N,Np^2*N);
-
+for iter=1:10
+    tic
+    A2=A+A+A;
+    save2(iter)=toc;
+    tic
+    Cx=A2*B;
+    save(iter)=toc;
+end
+fprintf('%f %f\n',median(save),median(save2))
 
