@@ -6,8 +6,8 @@ clc
 %fun = @(x) 1-x.^2/2+x.^4/24-x.^6/720+x.^8/40320-x.^10/3628800; %Taylor trig
 %fun = @(x) 1-(pi^2*x.^2)/2+(pi^4*x.^4)/24-(pi^6*x.^6)/720;     %Taylor trig
 %fun = @(x) max(0, exp(-x.^2/.04));                              %Gaussian curve
-%fun = @(x) max(0,cos(pi*x)+1- heaviside(abs(x)-1.01));       %Cleaved trig
-fun = @(x) heaviside(x+0.5).*exp(-1./(1-(2*x).^2)).*heaviside(0.5-x); %Mollifier
+fun = @(x) max(0,cos(pi*x)+1- heaviside(abs(x)-1.01));       %Cleaved trig
+%fun = @(x) heaviside(x+0.5).*exp(-1./(1-(2*x).^2)).*heaviside(0.5-x); %Mollifier
 A=-1; %Left boundary
 B=1; %Right Boundary
 

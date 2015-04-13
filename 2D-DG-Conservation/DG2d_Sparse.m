@@ -10,12 +10,12 @@ clear all
 clc
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-N= 8;                               %Local vorticity poly order
+N= 4;                               %Local vorticity poly order
 M= N;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 %Global domain initialization (parameters)---------------------------------
 B= [-1 1 -1 1];                     %left, right, bottom, top
-K= [32 32];                         %Num elements along x,y
+K= [16 16];                         %Num elements along x,y
 Ex= linspace(B(1),B(2),K(1)+1);     %Elem edges left-right
 Ey= linspace(B(3),B(4),K(2)+1);     %Elem edges bottom-top
 
@@ -115,10 +115,19 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 v_x=  reshape(v_x',1,Mp,[]);    %Reshape velocity_x for mtimesx bsx
 v_y=  reshape(v_y,1,Mp,[]);     %Reshape velocity_x for mtimesx bsx
 
-delt= 0.005;
-skip= 0.5;
+delt= 0.025;
+skip= 0.1;
 k2=   zeros(size(wx));
-for t=0:delt:100
+for t=0:delt:10
+    if mod(t,skip)<delt
+        surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
+        axis([B,0,1.1])
+        text(-1,1,1.2,strcat('Time: ',num2str(t)));
+        %Residual calc, used to calc the L^2 norm
+        R=GA1*exp(-((mod((wxm+1)/2-t*cx/2,1)*2-1).^2/Ga1+(mod((wym+1)/2-t*cy/2,1)*2-1).^2/Gb1))-reshape(wx,Np*K(1),Np*K(2))';
+        text(-1,1,1.3,strcat('L^2 norm: ',num2str(sqrt(sum(sum(norm_h.*R.^2))))));
+        pause(0.0001)
+    end
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity
@@ -142,14 +151,5 @@ for t=0:delt:100
         k2= RKa(i)*k2 + delt*(wx_dt+wy_dt);
         wx= wx+RKb(i)*k2;
         wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
-    end
-    if mod(t,skip)<delt
-        surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
-        axis([B,0,1.1])
-        text(-1,1,1.2,strcat('Time: ',num2str(t)));
-        %Residual calc, used to calc the L^2 norm
-        R=GA1*exp(-((mod((wxm+1)/2-t*cx/2,1)*2-1).^2/Ga1+(mod((wym+1)/2-t*cy/2,1)*2-1).^2/Gb1))-reshape(wx,Np*K(1),Np*K(2))';
-        text(-1,1,1.3,strcat('L^2 norm: ',num2str(sqrt(sum(sum(norm_h.*R.^2))))));
-        pause(0.0001)
     end
 end
