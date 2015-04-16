@@ -1,4 +1,4 @@
-function [Qx, Qw] = GenOrthog(N,w,A,B)
+function [Qx, Qw] = GenOrthog(N,w,A,B,mode)
 %Generate the N roots 'Qx' of a generalized basis of orthogonal polynomials
 %wrt weight function 'w' over the domain [A B]. These roots also form a set
 %of quadrature abcissa Qx and associated quadrature weights 'Qw'. These are
@@ -32,6 +32,12 @@ function [Qx, Qw] = GenOrthog(N,w,A,B)
 %eval [ (p3 and p2) and (p2 and p1) ] and [ (p3 and p2) and p3 ]
 %If we were to right out the full form where only p1 was explicit and with
 %no leapfrogging, it would be far more eval steps
+if nargin==5
+    M=N-1; %Reduce order by one to allow substitution of zero abscissa
+else
+    M=N;
+end
+
 p{1}=@(x) 1; %Start recurrence relation
 I2(1)= integral(@(x) w(x),A,B,'RelTol',1e-14,'AbsTol',1e-16);
 cn_1(2)= integral(@(x) x.*w(x),A,B,'RelTol',1e-14,'AbsTol',1e-16)/I2(1);
@@ -42,7 +48,7 @@ cn_1(3)= integral(@(x) x.*p{2}(x).^2.*w(x),A,B,'RelTol',1e-14,'AbsTol',1e-16)/I2
 cn_2(3)= I2(2)/I2(1); %Save the cn_x terms outside loop for later use below
 p{3}=@(x) (x-cn_1(3)).*(x-cn_1(2)) - cn_2(3); %Not req, unrolled for speed
 
-for iter=4:N+1
+for iter=4:M+1
     I2(iter-1)= integral(@(x) p{iter-1}(x).^2.*w(x),A,B,'RelTol',1e-14,'AbsTol',1e-16);
     cn_1(iter)= integral(@(x) x.*p{iter-1}(x).^2.*w(x),A,B,'RelTol',1e-14,'AbsTol',1e-16)/I2(iter-1);
     cn_2(iter)= I2(iter-1)/I2(iter-2);
@@ -66,7 +72,7 @@ end
 %Here we find roots, we take advantage of the fact than exactly one root
 %will appear for p_n+1 in between two roots (or domain bound) of p_n
 orthRoot(2,1)= fzero(p{2},[A B]); %Special setup since p_1 has no roots
-for poly=3:N+1
+for poly=3:M+1
     for numroot=1:poly-1
         temp= [A, orthRoot(poly-1,:), B];
         %We have to sequentially look through each area bounded by two
@@ -75,15 +81,22 @@ for poly=3:N+1
     end
 end
 
+%Quadrature abscissas are from the roots of the ortho poly
+if nargin==5
+    Qx= [0;orthRoot(M+1,:)']; %Add zero abscissa for modified mode
+else
+    Qx= orthRoot(M+1,:)';
+end
+
 %Here we calculate the associated quadrature weights with the nodes by
 %integrating the associate Lagrange basis for the node
 %This works because:
 %\int f ~ \int interp_f = \int \sum y_i L_i(x) = \sum y_i \int L_i(x)
-Qx=orthRoot(N,:)';
-nn=elim(Qx(1:N)',Qx(1:N)',[1 3 2]);
-Lag= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(nv,:,:)),bsxfun(@minus,Qx(nv),nn(nv,:,:))),3);
+nn= elim(Qx(1:N)',Qx(1:N)',[1 3 2]);
+Lag=@(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(nv,:,:)),bsxfun(@minus,Qx(nv),nn(nv,:,:))),3);
 
 for node=1:N
+    %We'll likely throw some convergence warnings here
     Qw(1,node)=integral(@(x) Lag(x,node),A,B,'RelTol',1e-14,'AbsTol',1e-16);
 end
 
