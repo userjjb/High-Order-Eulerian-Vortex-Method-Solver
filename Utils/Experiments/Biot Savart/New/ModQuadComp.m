@@ -1,5 +1,5 @@
 clear all
-N=15;
+N=6;
 del=0.01;
 r=@(x) x./(x.^2+del^2).^(3/2);
 A=0;
@@ -21,8 +21,8 @@ B=1;
 [Qx2, Qw2]= GLquad(N);
 Qx2=(Qx2+1)/2;
 
-fun = @(x) sin(pi*x-pi/2)+1;
-%fun = @(x) max(0, exp(-(x-.5).^2/.04));  
+%fun = @(x) sin(pi*x-pi/2)+1;
+fun = @(x) max(0, exp(-(x-.5).^2/.2));  
 
 nn=elim(Qx2(1:N)',Qx2(1:N)',[1 3 2]);
 Lag= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(nv,:,:)),bsxfun(@minus,Qx2(nv),nn(nv,:,:))),3);
