@@ -1,7 +1,7 @@
 clear all
 %Setup the test problem
-del=0.01
-N=5;
+del=0.01;
+N=6;
 [Qx,Qw] = GLquad(N);
 nd=(Qx+1)/2;
 
@@ -10,8 +10,8 @@ nd2=(Qx2+1)/2;
 
 a=0.2;
 b=0.2;
-dx=0.5; 
-dy=0.5;
+dx=0.6; 
+dy=0.6;
 w=@(x,y) 15*exp(-((x-dx).^2/a+(y-dy).^2/b));%Center is at (dx,dy)
 
 [xx,yy]=meshgrid(nd,nd);
@@ -27,10 +27,10 @@ W2=interp_w(xx2,yy2);
 for nx=1:N
 Tx=nd(nx);
 fprintf('%i ',nx)
-    for ny=1:N
-    Ty=nd(ny);
+    for ny=1:1
+    Ty=0;
 
-k=@(x,y) (x-Tx)./((x-Tx).^2+(y-Ty).^2+del^2).^(3/2);
+k=@(x,y) (y-Ty)./((x-Tx).^2+(y-Ty).^2+del^2).^(3/2);
 K=k(xx,yy);
 K2=k(xx2,yy2);
 
@@ -39,23 +39,19 @@ I(ny,nx)=integral2(@(x,y) interp_w(x,y).*k(x,y),0,1,0,1);
 Q(ny,nx)=Qw*(W.*K)*Qw'/4;
 Q2(ny,nx)=Qw2*(W2.*K2)*Qw2'/4;
 
-for Sn=1:N
-    %Tensor product of spatially varying Q_r and GLquad PARALLEL
-    r=@(x) 1./((x-Ty).^2+(nd(Sn)-Tx).^2+del^2).^(3/2);
-    [QxJ, QwJ] = GenOrthog(N,r,0,1);
-    QxL(:,Sn)=QxJ;
-    QwL(Sn,:)=QwJ;
+for Sn=1:N 
+    ry=@(y) y./((y-Ty).^2+(nd(Sn)-Tx).^2+del^2).^(3/2);
+    [QxJ, QwJ] = GenOrthog(2*N,ry,0,1,1);
+    QxY(:,Sn)=QxJ;
+    QwY(Sn,:)=QwJ;
 end
 
-
-WL= w(repmat(nd,1,N)',QxL);
-KL= k(repmat(nd,1,N)',QxL);
-QL(ny,nx)= sum(QwL'.*(WL.*KL))*Qw'/2;
-
-
+WY= w(repmat(nd',2*N,1),QxY);
+KY= k(repmat(nd',2*N,1),QxY);
+QY(ny,nx)= sum(QwY'.*(WY.*KY))*(Qw'/2);
     end
 end
 
 difEQ=E-Q;
 difEQ2=E-Q2;
-difEL=E-QL;
+difEY=E-QY;
