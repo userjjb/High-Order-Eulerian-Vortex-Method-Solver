@@ -13,6 +13,7 @@ alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
 N= 4;                               %Local vorticity poly order
 M= N;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
+w_thresh=0;
 %Global domain initialization (parameters)---------------------------------
 B= [-1 1 -1 1];                     %left, right, bottom, top
 K= [16 16];                         %Num elements along x,y
@@ -115,6 +116,8 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 v_x=  reshape(v_x',1,Mp,[]);    %Reshape velocity_x for mtimesx bsx
 v_y=  reshape(v_y,1,Mp,[]);     %Reshape velocity_x for mtimesx bsx
 
+oner=ones(1,Np^2); %For fast element sums
+QwPre=reshape(Qw'*Qw,[],1);
 delt= 0.025;
 skip= 0.1;
 k2=   zeros(size(wx));
@@ -130,15 +133,29 @@ for t=0:delt:10
     end
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
+        %Velocity eval of current timestep's vorticity config
+%         w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),Np^2,1,K(2)*K(1)); %Reshaped to col-wise element chunks
+%         w_tot_elem=abs(permute(mtimesx(oner,w_elem),[3 1 2])); %Sum of vorticity in each elem
+%         mask_elem=find(w_tot_elem>w_thresh); %Find "important" elements
+%         w_elemPre=bsxfun(@times,QwPre,w_elem(:,:,mask_elem)); %Pre-multiply by quad weights for speed
+% %         for each w_elemPre
+% %           %Needs kernel values still
+% %             v_x=v_x+mtimesx(kernel_x,w_elemPre);
+% %             v_y=v_y+mtimesx(kernel_y,w_elemPre);
+% %             v_xB=v_xB+mtimesx(kernel_xB,w_elemPre);
+% %             v_yB=v_yB+mtimesx(kernel_yB,w_elemPre);
+% %         end
+        
+        %Advection
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity
         w_rx= mtimesx(Lr',wx);          %Right interpolated vorticity
         w_bx= mtimesx(Ll',wy);          %Bottom interpolated vorticity
         w_tx= mtimesx(Lr',wy);          %Top interpolated vorticity
         %Boundary fluxes
-        fl= abs( v_x(EBl) ).*( w_rx(x_km1).*(sign(v_x(EBl))+alpha) + w_lx.*(sign(v_x(EBl))-alpha) );
-        fr= abs( v_x(EBr) ).*( w_rx.*(sign(v_x(EBr))+alpha) + w_lx(x_kp1).*(sign(v_x(EBr))-alpha) );
-        fb= abs( v_y(EBb) ).*( w_tx(y_km1).*(sign(v_y(EBb))+alpha) + w_bx.*(sign(v_y(EBb))-alpha) );
-        ft= abs( v_y(EBt) ).*( w_tx.*(sign(v_y(EBt))+alpha) + w_bx(y_kp1).*(sign(v_y(EBt))-alpha) );
+        fl= abs( v_xB(EBl) ).*( w_rx(x_km1).*(sign(v_xB(EBl))+alpha) + w_lx.*(sign(v_xB(EBl))-alpha) );
+        fr= abs( v_xB(EBr) ).*( w_rx.*(sign(v_xB(EBr))+alpha) + w_lx(x_kp1).*(sign(v_xB(EBr))-alpha) );
+        fb= abs( v_yB(EBb) ).*( w_tx(y_km1).*(sign(v_yB(EBb))+alpha) + w_bx.*(sign(v_yB(EBb))-alpha) );
+        ft= abs( v_yB(EBt) ).*( w_tx.*(sign(v_yB(EBt))+alpha) + w_bx(y_kp1).*(sign(v_yB(EBt))-alpha) );
 
         SurfFlux_x=bsxfun(@times,fr,LrM)-bsxfun(@times,fl,LlM); %Nodal total surface flux
         Stiff_x= mtimesx(v_x,mtimesx(QwSM,wx)); %Nodal stiffness eval
