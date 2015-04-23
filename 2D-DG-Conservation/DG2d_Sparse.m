@@ -11,7 +11,7 @@ clc
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
 N= 4;                               %Local vorticity poly order
-M= N;                               %Local velocity poly order
+M= 4;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=0;
 %Global domain initialization (parameters)---------------------------------
@@ -37,10 +37,20 @@ delX= (B(2)-B(1))/K(1);             %Element size
 QwSM=bsxfun(@times,QwS,2./(delX*permute(Qw,[1 4 3 2]))); %Distributed Mass matrix and Jacobian
     
 w= zeros(Np*K(2),Np*K(1));          %Global vorticity at element interp points
-v_x= cx*ones(Mp*K(2),Mp*K(1));      %Global velocity_x at element interp points
-v_y= cy*ones(Mp*K(2),Mp*K(1));      %Global velocity_y at element interp points
-v_xB= cx*ones(Mp*K(2),K(1)+1);      %Global velocity_x at elem x_boundaries
-v_yB= cy*ones(K(2)+1,Mp*K(1));      %Global velocity_y at elem y_boundaries
+%NOTE: Be careful to notice the use of Mp vs Np here
+%For velocity grids that are non-tensor products (ie. Mp=!Np) v_x is found
+%along x-streams and v_y is found along y-streams, but v_x eval points are
+%not generally coincident with v_y eval points. If one needed *both* v_x
+%and v_y for a given stream this would be a problem, one would need double
+%the velocity evaluations (w/o the benefit of coincident eval points).
+%However for stiffness calcs one only needs the velocity component parallel
+%to the stream direction. The Biot-Savart integral calculates velocity
+%componentwise, so we can take advantage of this and avoid half of the
+%velocity evals.
+v_x= cx*ones(Np*K(2),Mp*K(1));      %Global velocity_x at element interp points
+v_y= cy*ones(Mp*K(2),Np*K(1));      %Global velocity_y at element interp points
+v_xB= cx*ones(Np*K(2),K(1)+1);      %Global velocity_x at elem x_boundaries
+v_yB= cy*ones(K(2)+1,Np*K(1));      %Global velocity_y at elem y_boundaries
 
 %Element global numbering as well as element to left or right for periodic
 %BCs For instance,pass x_km1 as an index to get the element left of current
@@ -64,9 +74,7 @@ x_v= reshape(bsxfun(@plus,repmat((Qx2+1)*(delX/2),1,K(1)),Ex(1:end-1)),[],1);
 y_v= reshape(bsxfun(@plus,repmat((Qx2+1)*(delX/2),1,K(2)),Ey(1:end-1)),[],1);
 %Note that the actual velocity node locations for x_streams are (x_v,y_w) and
 %for y_streams are (y_v,x_w). The velocity grid is NOT a tensor product, but
-%rather velocity "streams" are coincident with vorticity streams, to reuse
-%evaluations for both x and y streams we set Mp=Np so we get a tensor grid
-%as a byproduct, but it isn't required
+%rather velocity "streams" are coincident with vorticity streams.
 %Additionally, the boundary velocity locations occur at (Ex,y_w) and
 %(x_w,Ey) analogous to the interpolation points
 [wxm, wym]= meshgrid(x_w,y_w);
@@ -78,6 +86,9 @@ h_y=(diff([B(3)+(B(3)-y_w(1));y_w]) + diff([y_w; B(4)+(B(4)-y_w(end))]))/2;
 norm_h=h_x.*h_y;
 
 %2D mollifier with center dx,dy and range over the ellipse with axes a,b
+%Not currently used, but may prove useful for IC funs that have 
+%discontinuous derivatives at truncation edges for smoothing to avoid the
+%interpolation from going haywire
 moll=@(x,y,dx,dy,a,b) heaviside(1-(((x-dx)/a).^2+((y-dy)/b).^2)).*exp(1+(-1./(1-(((x-dx)/a).^2+((y-dy)/b).^2).^4)));
 %Intial conditions specification-------------------------------------------
 ICfuns={}; %Create a cell list of functions that define the ICs
@@ -100,7 +111,6 @@ ICfuns{end+1}=@(x,y) GA2*exp(-(((x)-Gdx2).^2/Ga2+(y-Gdy2).^2/Gb2));%Center is at
 for IC=1:1%numel(ICfuns)
     w=w+ICfuns{IC}(wxm,wym);
 end
-%clearvars wxm wym %No longer need the meshgrid points
 
 %Solver--------------------------------------------------------------------
 %Setup:
