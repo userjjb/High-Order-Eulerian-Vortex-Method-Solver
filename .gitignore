@@ -220,3 +220,5 @@ pip-log.txt
 *.toc
 2D-DG-Conservation/Tex/VortexFlows-HOConsv.synctex.gz
 *.asv
+*.lot
+*.gz

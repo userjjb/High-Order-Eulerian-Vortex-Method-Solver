@@ -1,0 +1,43 @@
+\documentclass[letterpaper,12pt]{report}
+\usepackage[english]{babel}							%For internationalization
+\usepackage[utf8]{inputenc}							%For character encoding
+\usepackage{amsmath}								%For mathematical typesetting
+\usepackage{amssymb}								%For mathematical typesetting
+\usepackage{graphicx}								%For handling graphics
+\usepackage[top=1in, bottom=1in, left=1.5in, right=1in]{geometry}	%Sets required thesis margins
+\usepackage[nodisplayskipstretch,doublespacing]{setspace} 		%Sets required thesis double spacing
+\usepackage{titlesec} 								%Used to easily redefine section title styles
+
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ben}[1]{\begin{equation}\label{#1}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\aomega}{\overset{\sim}{\omega}}				%Approximate omega
+
+\title{\vspace{-3cm} \large VORTEX DOMINATED FLOWS: A HIGH-ORDER, CONSERVATIVE EULERIAN SIMULATION METHOD}
+\author{\normalsize BY\vspace{1cm}\\  \normalsize JOSH BEVAN \\ \normalsize B.S. UNIVERSITY OF MASSACHUSETTS LOWELL (2013)}
+\date{\vspace{1cm} \normalsize SUBMITTED IN PARTIAL FULFILLMENT OF THE REQUIREMENTS \\
+FOR THE DEGREE OF MASTER OF SCIENCE\\
+DEPARTMENT OF MECHANICAL ENGINEERING\\
+UNIVERSITY OF MASSACHUSETTS LOWELL\\
+\vspace{3cm}
+Signature of Author:\rule{3in}{.5pt} Date:\rule{1in}{.5pt}\\ \vspace{0.3cm}
+Signature of Thesis Supervisor:\hrulefill\\
+Name Typed:\underline{ \quad David Willis}\rule[-.6mm]{3.93in}{.5pt}\\ \vspace{0.3cm}
+Committee Member Signature:\hrulefill\\
+Name Typed:\underline{ \quad Per-Olof Persson}\rule[-.6mm]{3.6in}{.5pt}\\ \vspace{0.3cm}
+Committee Member Signature:\hrulefill \\
+Name Typed:\underline{ \quad Juan Pablo Trelles}\rule[-.6mm]{3.45in}{.5pt}\\ \vspace{0.3cm}}
+
+%Set section formats so chapters, sections, and subsections are 14ish pt
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\chapter}{\large\bfseries}{\thechapter}{1em}{}
+	\titlespacing*{\chapter}{0pt}{.7in}{0pt} %Add whitespace above chapter title to get a 2in margin
+
+%Frontmatter----------------------------------------------------------------------
+\begin{document}
+\pagenumbering{roman} %Roman numbering for frontmatter
+\maketitle
+
+
+\end{document}
