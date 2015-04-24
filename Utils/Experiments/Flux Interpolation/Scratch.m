@@ -1,11 +1,11 @@
 clear all
 
-P=10;
+P=8;
 [Qx,Qw]= GLquad(P);
 pp=elim(Qx(1:P)',Qx(1:P)',[1 3 2]);
 Lag3= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,pp(nv,:,:)),bsxfun(@minus,Qx(nv),pp(nv,:,:))),3);
 
-R=7;
+R=10;
 [Qx2,Qw2]= GLquad(R);
 rr=elim(Qx2(1:R)',Qx2(1:R)',[1 3 2]);
 Lag4= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,rr(nv,:,:)),bsxfun(@minus,Qx2(nv),rr(nv,:,:))),3);
@@ -16,9 +16,9 @@ s = @(x) sin(pi*x);
 g = @(x) exp(-(x-b).^2/(2*c2));
 s_g=@(x) s(x).*g(x);
 
-for N=5:15
+for N=3:15
     [nd,w] = GLquad(N);
-    M=N-3;
+    M=N+1;
     [nd2,w2] = GLquad(M);
     
     %Fully vectorized for both x and nv
@@ -57,7 +57,7 @@ for N=5:15
                 W2(i,j)=integral(trip,-1,1,'RelTol',1e-14,'AbsTol',1e-15);
         end
     end
-    Q(N,9)=(interp_s(Qx')*W2)*interp_g(Qx2')';
+    Q(N,9)=interp_s(Qx')*(W2*interp_g(Qx2')');
     
     Q(N,15)=(N-1)+(M-1);
     Q(N,16)=N;
