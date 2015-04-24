@@ -49,8 +49,8 @@ w= zeros(Np*K(2),Np*K(1));          %Global vorticity at element interp points
 %to the stream direction. The Biot-Savart integral calculates velocity
 %componentwise, so we can take advantage of this and avoid half of the
 %velocity evals.
-v_xI=cx*ones(Mp-2,1,K(1)*Np*K(2));
-v_yI=cy*ones(Mp-2,1,K(2)*Np*K(1));
+v_xI=cx*ones(1,Mp-2,K(1)*Np*K(2));
+v_yI=cy*ones(1,Mp-2,K(2)*Np*K(1));
 v_xB=cx*ones(Np*K(2),K(1)+1);
 v_yB=cy*ones(K(2)+1,Np*K(2));
 
@@ -139,10 +139,10 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 %in the stream, each element in the column matches the scalar value of the
 %kernel for that point as one moves col-wise within the source
 %element to match w_elem's ordering.
-gkernelxB= ;
-gkernelyB= ;
-gkernelx= ;
-gkernely= ;
+% gkernelxB= ;
+% gkernelyB= ;
+% gkernelx= ;
+% gkernely= ;
 
 oner=ones(Np^2,1);              %For fast element sums
 QwPre=reshape(Qw'*Qw,1,[]);     %Outer product of vorticity quadrature weights for pre-multiplication
@@ -162,7 +162,7 @@ for t=0:delt:10
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
         %---Velocity eval of current timestep's vorticity config-----------
-        v_xB(:)=0; v_yB(:)=0; v_xI(:)=0; v_yI(:)=0;
+%         v_xB(:)=0; v_yB(:)=0; v_xI(:)=0; v_yI(:)=0;
         w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
         w_tot_elem=abs(permute(mtimesx(w_elem,oner),[3 1 2])); %Sum of vorticity in each elem
         mask_elem=find(w_tot_elem>w_thresh); %Find "important" elements
@@ -170,22 +170,22 @@ for t=0:delt:10
         
         mask_streamx=reshape(Estreamx(:,mask_elem),1,1,[]);
         mask_streamy=reshape(Estreamy(:,mask_elem),1,1,[]);
-        for source=1:length(mask_elem)
-            %Element mask transformed to global coords
-            mask_tfB= ;
-            mask_tf= ;
-            w_source=w_elemPre(:,:,source);
-            %Form the (Np^2,Mp-2 OR 2,Np*length(mask_elem)) element kernel
-            %size comes from(num w_interp,velocity eval,streams in total)
-            kernel_xB=gkernel_xB(:,:,mask_tfB);
-            kernel_yB=gkernel_yB(:,:,mask_tfB);
-            kernel_x=gkernel_x(:,:,mask_tf);
-            kernel_y=gkernel_y(:,:,mask_tf);
-            v_xB= v_xB + mtimesx(w_source,kernelxB);
-            v_yB= v_yB + mtimesx(w_source,kernelyB);
-            v_xI(mask_streamx)= v_xI(mask_streamx) + mtimesx(w_source,kernelx);
-            v_yI(mask_streamy)= v_yI(mask_streamy) + mtimesx(w_source,kernely);
-        end
+%         for source=1:length(mask_elem)
+%             %Element mask transformed to global coords
+%             mask_tfB= ;
+%             mask_tf= ;
+%             w_source=w_elemPre(:,:,source);
+%             %Form the (Np^2,Mp-2 OR 2,Np*length(mask_elem)) element kernel
+%             %size comes from(num w_interp,velocity eval,streams in total)
+%             kernel_xB=gkernel_xB(:,:,mask_tfB);
+%             kernel_yB=gkernel_yB(:,:,mask_tfB);
+%             kernel_x=gkernel_x(:,:,mask_tf);
+%             kernel_y=gkernel_y(:,:,mask_tf);
+%             v_xB= v_xB + mtimesx(w_source,kernelxB);
+%             v_yB= v_yB + mtimesx(w_source,kernelyB);
+%             v_xI(mask_streamx)= v_xI(mask_streamx) + mtimesx(w_source,kernelx);
+%             v_yI(mask_streamy)= v_yI(mask_streamy) + mtimesx(w_source,kernely);
+%         end
         v_xE=[v_xB(EBl),v_xI,v_xB(EBr)]; %Calc elementwise velocities
         v_yE=[v_yB(EBb),v_yI,v_yB(EBt)];
         
