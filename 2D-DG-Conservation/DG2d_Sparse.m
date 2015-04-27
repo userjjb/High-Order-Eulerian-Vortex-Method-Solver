@@ -10,10 +10,10 @@ clear all
 clc
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-N= 5;                               %Local vorticity poly order
+N= 4;                               %Local vorticity poly order
 M= 4;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=5e-3;
+w_thresh=1e-6;
 del=2*0.2^2;
 %---Global domain initialization (parameters)------------------------------
 B= [-1 1 -1 1];                     %left, right, bottom, top
@@ -113,8 +113,8 @@ moll=@(x,y,dx,dy,a,b) heaviside(1-(((x-dx)/a).^2+((y-dy)/b).^2)).*exp(1+(-1./(1-
 %Intial conditions specification-------------------------------------------
 ICfuns={}; %Create a cell list of functions that define the ICs
     %Gaussian 1
-Ga1=    0.04;
-Gb1=    0.12;
+Ga1=    0.05;
+Gb1=    0.05;
 Gdx1=   0; 
 Gdy1=   0;
 GA1=    1;
@@ -157,25 +157,30 @@ gkernel_yB= bsxfun(@minus,srcx(:),rv_yB(1,1,:,:))./(sum(bsxfun(@minus,rv_yB,[src
 % gkernel_x= ;
 % gkernel_y= ;
 
-oner=ones(Np^2,1);              %For fast element sums
-QwPre=reshape(Qw'*Qw,1,[]);     %Outer product of vorticity quadrature weights for pre-multiplication
-delt= 0.000075;
-skip= 0.0003;
+QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);     %Outer product of vorticity quadrature weights for pre-multiplication
+delt= 0.055;
+skip= 0.055;
 k2=   zeros(size(wx));          %LSERK stage state
-for t=0:delt:.02
+mask=0;
+tic
+endtime=10;
+for t=0:delt:endtime
     if mod(t,skip)<delt
         surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
-        axis([B,0,1.1])
-        text(-1,1,1.2,strcat('Time: ',num2str(t)));
+        axis([B,0,GA1*1.5])
         %Residual calc, used to calc the L^2 norm
-        R=GA1*exp(-((mod((wxm+1)/2-t*cx/2,1)*2-1).^2/Ga1+(mod((wym+1)/2-t*cy/2,1)*2-1).^2/Gb1))-reshape(wx,Np*K(1),Np*K(2))';
-        text(-1,1,1.3,strcat('L^2 norm: ',num2str(sqrt(sum(sum(norm_h.*R.^2))))));
+        %GA1*exp(-((mod((wxm+1)/2-t*cx/2,1)*2-1).^2/Ga1+(mod((wym+1)/2-t*cy/2,1)*2-1).^2/Gb1))
+        R=w-reshape(wx,Np*K(1),Np*K(2))';
+        text(B(1),B(4),GA1*1.5*1.2,['Time: ',num2str(t),char(10),...
+            'L^2 norm: ',num2str(sqrt(sum(sum(norm_h.*R.^2)))),char(10),...
+            'Mask: ',num2str(length(mask)),char(10),...
+            'Done in: ',num2str((endtime-t)*toc/t)]);
         pause(0.0001)
     end
     %---Velocity eval of current timestep's vorticity config-----------
         v_xB(:)=0; v_yB(:)=0;% v_xI(:)=0; v_yI(:)=0;
         w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
-        w_tot_elem=abs(permute(mtimesx(w_elem,oner),[3 1 2])); %Sum of vorticity in each elem
+        w_tot_elem=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
         mask=find(w_tot_elem>w_thresh); %Find "important" elements
         w_elemPre=bsxfun(@times,QwPre,w_elem(:,:,mask)); %Pre-multiply by quad weights for speed
         
