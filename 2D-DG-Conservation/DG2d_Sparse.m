@@ -15,6 +15,7 @@ M= 4;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1e-6;
 del=2*0.2^2;
+BCtype= 'NoInflow';
 %---Global domain initialization (parameters)------------------------------
 B= [-1 1 -1 1];                     %left, right, bottom, top
 K= [16 16];                         %Num elements along x,y
@@ -66,6 +67,7 @@ x_kp1= reshape(circshift(Eord_x,[0 -1])',[],1);
 Eord_y= reshape(1:K(1)*K(2)*Np,K(2),K(1)*Np);
 y_km1= reshape(circshift(Eord_y,[1 0]),[],1);
 y_kp1= reshape(circshift(Eord_y,[-1 0]),[],1);
+
 %Boundary velocity node numbering
 EBx=reshape(1:Np*K(2)*(K(1)+1),Np*K(2),(K(1)+1));
 EBl= reshape(EBx(:,1:end-1)',1,1,[]);
@@ -117,7 +119,7 @@ Ga1=    0.05;
 Gb1=    0.05;
 Gdx1=   0; 
 Gdy1=   0;
-GA1=    1;
+GA1=    -1;
 ICfuns{end+1}=@(x,y) GA1*exp(-(((x)-Gdx1).^2/Ga1+(y-Gdy1).^2/Gb1));%Center is at (dx,dy)
     %Gaussian 2
 Ga2=    0.02;
@@ -158,8 +160,8 @@ gkernel_yB= bsxfun(@minus,srcx(:),rv_yB(1,1,:,:))./(sum(bsxfun(@minus,rv_yB,[src
 % gkernel_y= ;
 
 QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);     %Outer product of vorticity quadrature weights for pre-multiplication
-delt= 0.055;
-skip= 0.055;
+delt= 0.05;
+skip= 0.05;
 k2=   zeros(size(wx));          %LSERK stage state
 mask=0;
 tic
@@ -178,29 +180,29 @@ for t=0:delt:endtime
         pause(0.0001)
     end
     %---Velocity eval of current timestep's vorticity config-----------
-        v_xB(:)=0; v_yB(:)=0;% v_xI(:)=0; v_yI(:)=0;
-        w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
-        w_tot_elem=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
-        mask=find(w_tot_elem>w_thresh); %Find "important" elements
-        w_elemPre=bsxfun(@times,QwPre,w_elem(:,:,mask)); %Pre-multiply by quad weights for speed
-        
-        mask_streamx=reshape(Estreamx(:,mask),1,1,[]);
-        mask_streamy=reshape(Estreamy(:,mask),1,1,[]);
-        for it=1:length(mask)
-            w_source=w_elemPre(:,:,it);
-            %Form local source kernel from local stencil applied to global source kernel
-            source= mask(it);
-            kernel_xB= gkernel_xB( :,:,[K(1)+1:2*K(1)+1]-Enumx(source),[Np*(K(2)-Enumy(source))+1:Np*(2*K(2)-Enumy(source))]);
-            kernel_yB= gkernel_yB( :,:,[K(2)+1:2*K(2)+1]-Enumy(source),[Np*(K(1)-Enumx(source))+1:Np*(2*K(1)-Enumx(source))]);
-%             kernel_x= gkernel_x(:,:,mask_tf);
-%             kernel_y= gkernel_y(:,:,mask_tf);
-            v_xB= v_xB + permute(mtimesx(w_source,kernel_xB),[4 3 1 2]);
-            v_yB= v_yB + permute(mtimesx(w_source,kernel_yB),[3 4 1 2]);
-%             v_xI(mask_streamx)= v_xI(mask_streamx) + mtimesx(w_source,kernelx);
-%             v_yI(mask_streamy)= v_yI(mask_streamy) + mtimesx(w_source,kernely);
-        end
-        v_xE=[v_xB(EBl),v_xI,v_xB(EBr)]; %Calc elementwise velocities
-        v_yE=[v_yB(EBb),v_yI,v_yB(EBt)];
+        %v_xB(:)=0; v_yB(:)=0;% v_xI(:)=0; v_yI(:)=0;
+%         w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
+%         w_tot_elem=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
+%         mask=find(w_tot_elem>w_thresh); %Find "important" elements
+%         w_elemPre=bsxfun(@times,QwPre,w_elem(:,:,mask)); %Pre-multiply by quad weights for speed
+%         
+%         mask_streamx=reshape(Estreamx(:,mask),1,1,[]);
+%         mask_streamy=reshape(Estreamy(:,mask),1,1,[]);
+%         for it=1:length(mask)
+%             w_source=w_elemPre(:,:,it);
+%             %Form local source kernel from local stencil applied to global source kernel
+%             source= mask(it);
+%             kernel_xB= gkernel_xB( :,:,[K(1)+1:2*K(1)+1]-Enumx(source),[Np*(K(2)-Enumy(source))+1:Np*(2*K(2)-Enumy(source))]);
+%             kernel_yB= gkernel_yB( :,:,[K(2)+1:2*K(2)+1]-Enumy(source),[Np*(K(1)-Enumx(source))+1:Np*(2*K(1)-Enumx(source))]);
+% %             kernel_x= gkernel_x(:,:,mask_tf);
+% %             kernel_y= gkernel_y(:,:,mask_tf);
+%             v_xB= v_xB + permute(mtimesx(w_source,kernel_xB),[4 3 1 2]);
+%             v_yB= v_yB + permute(mtimesx(w_source,kernel_yB),[3 4 1 2]);
+% %             v_xI(mask_streamx)= v_xI(mask_streamx) + mtimesx(w_source,kernelx);
+% %             v_yI(mask_streamy)= v_yI(mask_streamy) + mtimesx(w_source,kernely);
+%         end
+%         v_xE=[v_xB(EBl),v_xI,v_xB(EBr)]; %Calc elementwise velocities
+%         v_yE=[v_yB(EBb),v_yI,v_yB(EBt)];
         v_xBQ=[v_xB(EBl),v_xB(EBr)];
         v_yBQ=[v_yB(EBb),v_yB(EBt)]; 
     for i=1:nS
@@ -213,10 +215,19 @@ for t=0:delt:endtime
         w_bx= mtimesx(Ll',wy);          %Bottom interpolated vorticity
         w_tx= mtimesx(Lr',wy);          %Top interpolated vorticity
         %Boundary fluxes
-        fl= abs( v_xB(EBl) ).*( w_rx(x_km1).*(sign(v_xB(EBl))+alpha) + w_lx.*(sign(v_xB(EBl))-alpha) );
-        fr= abs( v_xB(EBr) ).*( w_rx.*(sign(v_xB(EBr))+alpha) + w_lx(x_kp1).*(sign(v_xB(EBr))-alpha) );
-        fb= abs( v_yB(EBb) ).*( w_tx(y_km1).*(sign(v_yB(EBb))+alpha) + w_bx.*(sign(v_yB(EBb))-alpha) );
-        ft= abs( v_yB(EBt) ).*( w_tx.*(sign(v_yB(EBt))+alpha) + w_bx(y_kp1).*(sign(v_yB(EBt))-alpha) );
+        if BCtype== 'NoInflow'
+            v_xBC= v_xB;
+            v_xBC(:,1)= min(v_xBC(:,1),0);
+            v_xBC(:,end)= max(v_xBC(:,end),0);
+            v_yBC= v_yB;
+            v_yBC(1,:)= min(v_yBC(1,:),0);
+            v_yBC(end,:)= max(v_yBC(end,:),0);
+        end
+        
+        fl= abs( v_xBC(EBl) ).*( w_rx(x_km1).*(sign(v_xB(EBl))+alpha) + w_lx.*(sign(v_xB(EBl))-alpha) );
+        fr= abs( v_xBC(EBr) ).*( w_rx.*(sign(v_xB(EBr))+alpha) + w_lx(x_kp1).*(sign(v_xB(EBr))-alpha) );
+        fb= abs( v_yBC(EBb) ).*( w_tx(y_km1).*(sign(v_yB(EBb))+alpha) + w_bx.*(sign(v_yB(EBb))-alpha) );
+        ft= abs( v_yBC(EBt) ).*( w_tx.*(sign(v_yB(EBt))+alpha) + w_bx(y_kp1).*(sign(v_yB(EBt))-alpha) );
 
         SurfFlux_x=bsxfun(@times,fr,LrM)-bsxfun(@times,fl,LlM); %Nodal total surface flux
         Stiff_x= mtimesx(v_xBQ,mtimesx(QwSMlow,wx)); %Nodal stiffness eval

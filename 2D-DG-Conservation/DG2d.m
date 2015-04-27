@@ -10,17 +10,19 @@ clear all
 clc
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-N= 6;                               %Local vorticity poly order
-M= 2;                               %Local velocity poly order
+N= 4;                               %Local vorticity poly order
+M= 4;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1e-6;
+w_thresh=1E-7;
 del=2*0.2^2;
-delt= 0.01;
-skip= 2;
-endtime=.5;
+delt= 0.05;
+skip= 1;
+endtime=10;
+DGmask='full';
+BCtype= 'NoInflow';
 %---Global domain initialization (parameters)------------------------------
-B= 0.6*[-1 1 -1 1];                     %left, right, bottom, top
-K= [20 20];                         %Num elements along x,y
+B= [-1 1 -1 1];                     %left, right, bottom, top
+K= [16 16];                         %Num elements along x,y
 Ex= linspace(B(1),B(2),K(1)+1);     %Elem edges left-right
 Ey= linspace(B(3),B(4),K(2)+1);     %Elem edges bottom-top
 
@@ -117,7 +119,7 @@ moll=@(x,y,dx,dy,a,b) heaviside(1-(((x-dx)/a).^2+((y-dy)/b).^2)).*exp(1+(-1./(1-
 %Intial conditions specification-------------------------------------------
 ICfuns={}; %Create a cell list of functions that define the ICs
     %Gaussian 1
-Ga1=    0.05;
+Ga1=    0.025;
 Gb1=    0.05;
 Gdx1=   0; 
 Gdy1=   0;
@@ -166,9 +168,13 @@ gkernel_y= squeeze(bsxfun(@minus,srcx(:),rv_y(1,1,:,:))./(sum(bsxfun(@minus,rv_y
 QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);
 k2=   zeros(size(wx));          %LSERK stage state
 mask=0;
+itt=0;
 tic
 for t=0:delt:endtime
     if mod(t,skip*delt)<delt
+        itt=itt+1;
+        tt(itt)=t;
+        wxt(:,:,:,itt)=wx;
         surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
         axis([B,0,GA1*1.5])
         %Residual calc, used to calc the L^2 norm
@@ -181,7 +187,12 @@ for t=0:delt:endtime
         pause(0.0001)
     end
     
-     %---Velocity eval of current timestep's vorticity config-----------
+     
+        
+    for i=1:nS
+        St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
+        
+        %---Velocity eval of current timestep's vorticity config-----------
         v_xB(:)=0; v_yB(:)=0; v_xI(:)=0; v_yI(:)=0;
         w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
         w_tot_elem=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
@@ -210,35 +221,49 @@ for t=0:delt:endtime
                 v_yI= v_yI + mtimesx(w_source,kernel_y);
             end
         end
-        %Assemble elementwise velocities in mask
-        v_xE=[v_xB(EBl(msx)),v_xI(:,:,msx),v_xB(EBr(msx))];
-        v_yE=[v_yB(EBb(msy)),v_yI(:,:,msy),v_yB(EBt(msy))];
-        %Assemble boundary velocities not in mask
-        v_xBQ=[v_xB(EBl(Nmsx)),v_xB(EBr(Nmsx))];
-        v_yBQ=[v_yB(EBb(Nmsy)),v_yB(EBt(Nmsy))];
+        switch DGmask
+            case 'reduced'
+            %Assemble elementwise velocities in mask
+            v_xE=[v_xB(EBl(msx)),v_xI(:,:,msx),v_xB(EBr(msx))];
+            v_yE=[v_yB(EBb(msy)),v_yI(:,:,msy),v_yB(EBt(msy))];
+            %Assemble boundary velocities not in mask
+            v_xBQ=[v_xB(EBl(Nmsx)),v_xB(EBr(Nmsx))];
+            v_yBQ=[v_yB(EBb(Nmsy)),v_yB(EBt(Nmsy))];
+            case 'full'
+            v_xE=[v_xB(EBl),v_xI,v_xB(EBr)];
+            v_yE=[v_yB(EBb),v_yI,v_yB(EBt)];
+        end
         
-    for i=1:nS
-        St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
-        
-           
         %---Advection------------------------------------------------------
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity
         w_rx= mtimesx(Lr',wx);          %Right interpolated vorticity
         w_bx= mtimesx(Ll',wy);          %Bottom interpolated vorticity
         w_tx= mtimesx(Lr',wy);          %Top interpolated vorticity
         %Boundary fluxes
-        fl= abs( v_xB(EBl) ).*( w_rx(x_km1).*(sign(v_xB(EBl))+alpha) + w_lx.*(sign(v_xB(EBl))-alpha) );
-        fr= abs( v_xB(EBr) ).*( w_rx.*(sign(v_xB(EBr))+alpha) + w_lx(x_kp1).*(sign(v_xB(EBr))-alpha) );
-        fb= abs( v_yB(EBb) ).*( w_tx(y_km1).*(sign(v_yB(EBb))+alpha) + w_bx.*(sign(v_yB(EBb))-alpha) );
-        ft= abs( v_yB(EBt) ).*( w_tx.*(sign(v_yB(EBt))+alpha) + w_bx(y_kp1).*(sign(v_yB(EBt))-alpha) );
-
-        SurfFlux_x=bsxfun(@times,fr,LrM)-bsxfun(@times,fl,LlM); %Nodal total surface flux
+        if BCtype== 'NoInflow'
+            v_xBC= v_xB; v_xBC(:,1)= min(v_xBC(:,1),0); v_xBC(:,end)= max(v_xBC(:,end),0);
+            v_yBC= v_yB; v_yBC(1,:)= min(v_yBC(1,:),0); v_yBC(end,:)= max(v_yBC(end,:),0);
+        end
+        
+        fl= abs( v_xBC(EBl) ).*( w_rx(x_km1).*(sign(v_xB(EBl))+alpha) + w_lx.*(sign(v_xB(EBl))-alpha) );
+        fr= abs( v_xBC(EBr) ).*( w_rx.*(sign(v_xB(EBr))+alpha) + w_lx(x_kp1).*(sign(v_xB(EBr))-alpha) );
+        fb= abs( v_yBC(EBb) ).*( w_tx(y_km1).*(sign(v_yB(EBb))+alpha) + w_bx.*(sign(v_yB(EBb))-alpha) );
+        ft= abs( v_yBC(EBt) ).*( w_tx.*(sign(v_yB(EBt))+alpha) + w_bx(y_kp1).*(sign(v_yB(EBt))-alpha) );
+        
+        %Nodal total surface flux
+        SurfFlux_x=bsxfun(@times,fr,LrM)-bsxfun(@times,fl,LlM);
         SurfFlux_y=bsxfun(@times,ft,LrM)-bsxfun(@times,fb,LlM);
         %Nodal stiffness eval
-        Stiff_x(:,:,msx,:)= mtimesx(v_xE,mtimesx(QwSM,wx(:,:,msx)));
-        Stiff_x(:,:,Nmsx,:)= mtimesx(v_xBQ,mtimesx(QwSMlow,wx(:,:,Nmsx)));
-        Stiff_y(:,:,msy,:)= mtimesx(v_yE,mtimesx(QwSM,wy(:,:,msy)));
-        Stiff_y(:,:,Nmsy,:)= mtimesx(v_yBQ,mtimesx(QwSMlow,wy(:,:,Nmsy)));
+        switch DGmask
+            case 'reduced'
+            Stiff_x(:,:,msx,:)= mtimesx(v_xE,mtimesx(QwSM,wx(:,:,msx)));
+            Stiff_x(:,:,Nmsx,:)= mtimesx(v_xBQ,mtimesx(QwSMlow,wx(:,:,Nmsx)));
+            Stiff_y(:,:,msy,:)= mtimesx(v_yE,mtimesx(QwSM,wy(:,:,msy)));
+            Stiff_y(:,:,Nmsy,:)= mtimesx(v_yBQ,mtimesx(QwSMlow,wy(:,:,Nmsy)));
+            case 'full'
+            Stiff_x= mtimesx(v_xE,mtimesx(QwSM,wx));
+            Stiff_y= mtimesx(v_yE,mtimesx(QwSM,wy));
+        end
 
         wx_dt= permute(Stiff_x-SurfFlux_x,[4 1 3 2]); %Reshape to match wx
         wy_dt= reshape(reshape(Stiff_y-SurfFlux_y,K(2),[])',Np,1,[]); %Reshape to match wx
