@@ -10,19 +10,20 @@ clear all
 clc
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-N= 4;                               %Local vorticity poly order
-M= 4;                               %Local velocity poly order
+N= 5;                               %Local vorticity poly order
+M=  5;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1E-7;
 del=2*0.2^2;
-delt= 0.05;
+delt= 0.02;
 skip= 1;
-endtime=10;
+endtime=12;
 DGmask='full';
 BCtype= 'NoInflow';
+TestCase=2;
 %---Global domain initialization (parameters)------------------------------
-B= [-1 1 -1 1];                     %left, right, bottom, top
-K= [16 16];                         %Num elements along x,y
+B= 0.6*[-1 1 -1 1];                     %left, right, bottom, top
+K= [6 6];                         %Num elements along x,y
 Ex= linspace(B(1),B(2),K(1)+1);     %Elem edges left-right
 Ey= linspace(B(3),B(4),K(2)+1);     %Elem edges bottom-top
 
@@ -115,7 +116,7 @@ norm_h=h_x.*h_y;
 %Not currently used, but may prove useful for IC funs that have 
 %discontinuous derivatives at truncation edges for smoothing to avoid the
 %interpolation from going haywire
-moll=@(x,y,dx,dy,a,b) heaviside(1-(((x-dx)/a).^2+((y-dy)/b).^2)).*exp(1+(-1./(1-(((x-dx)/a).^2+((y-dy)/b).^2).^4)));
+moll=@(x,y,dx,dy,a,b) heaviside(1-(((x-dx)/a).^2+((y-dy)/b).^2)).*exp(1+(-1./(1-(((x-dx)/a).^2+((y-dy)/b).^2).^2)));
 %Intial conditions specification-------------------------------------------
 ICfuns={}; %Create a cell list of functions that define the ICs
     %Gaussian 1
@@ -125,16 +126,13 @@ Gdx1=   0;
 Gdy1=   0;
 GA1=    1;
 ICfuns{end+1}=@(x,y) GA1*exp(-(((x)-Gdx1).^2/Ga1+(y-Gdy1).^2/Gb1));%Center is at (dx,dy)
-    %Gaussian 2
-Ga2=    0.01;
-Gb2=    0.01;
-Gdx2=   -0.2; 
-Gdy2=   -0.2;
-GA2=    .2;
-ICfuns{end+1}=@(x,y) GA2*exp(-(((x)-Gdx2).^2/Ga2+(y-Gdy2).^2/Gb2));%Center is at (dx,dy)
+    %Fun 2
+ICfuns{end+1}=@(x,y) (1/0.7^14)*(0.7^2-min(x.^2+y.^2,0.7^2)).^7;
+    %Fun 3
+ICfuns{end+1}=@(x,y) moll(x,y,0,0,0.31,0.31);    
 
 %Iterate over each of the IC funs
-for IC=1:1%numel(ICfuns)
+for IC=TestCase:TestCase%numel(ICfuns)
     w=w+ICfuns{IC}(wxm,wym);
 end
 
@@ -169,8 +167,13 @@ QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);
 k2=   zeros(size(wx));          %LSERK stage state
 mask=0;
 itt=0;
+w_tot_elem=0;
+lap=0;
 tic
 for t=0:delt:endtime
+    if abs(t-2)<eps(2)
+            lap=sqrt(sum(sum(norm_h.*R.^2)));
+    end
     if mod(t,skip*delt)<delt
         itt=itt+1;
         tt(itt)=t;
@@ -183,11 +186,12 @@ for t=0:delt:endtime
         text(B(1),B(4),GA1*1.5*1.2,['Time: ',num2str(t),char(10),...
             'L^2 norm: ',num2str(sqrt(sum(sum(norm_h.*R.^2)))),char(10),...
             'Mask: ',num2str(length(mask)),char(10),...
-            'Done in: ',num2str((endtime-t)*toc/t)]);
+            'Done in: ',num2str((endtime-t)*toc/t),char(10),...
+            '\omega_{tot}: ',num2str(sum(w_tot_elem))]);
+        text(B(1),B(4),-.5,num2str(lap));
         pause(0.0001)
     end
-    
-     
+
         
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
@@ -233,6 +237,7 @@ for t=0:delt:endtime
             v_xE=[v_xB(EBl),v_xI,v_xB(EBr)];
             v_yE=[v_yB(EBb),v_yI,v_yB(EBt)];
         end
+        %---Velocity eval ends---------------------------------------------
         
         %---Advection------------------------------------------------------
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity
@@ -273,3 +278,11 @@ for t=0:delt:endtime
         wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
     end
 end
+sqrt(sum(sum(norm_h.*R.^2)))
+lap
+a=sum(w_tot_elem);
+wy= reshape(w,Np,1,[]);
+w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1));
+w_tot_elem=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2]));
+b=sum(w_tot_elem);
+a-b
