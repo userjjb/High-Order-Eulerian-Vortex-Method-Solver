@@ -14,16 +14,16 @@ N= 5;                               %Local vorticity poly order
 M= 5;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1E-7;
-del=2*0.2^2;
-delt= 0.02;
+del=2*0.15^2;
+delt= 0.025;
 skip= 1;
-endtime=48;
+endtime=28;
 DGmask='full';
 BCtype= 'NoInflow';
 TestCase=2;
 %---Global domain initialization (parameters)------------------------------
-B= 0.6*[-1 1 -1 1];                     %left, right, bottom, top
-K= [6 6];                         %Num elements along x,y
+B= 3.5*[-1.25 1 -1.25 1];                     %left, right, bottom, top
+K= [32 32];                         %Num elements along x,y
 Ex= linspace(B(1),B(2),K(1)+1);     %Elem edges left-right
 Ey= linspace(B(3),B(4),K(2)+1);     %Elem edges bottom-top
 
@@ -55,7 +55,7 @@ w= zeros(Np*K(2),Np*K(1));          %Global vorticity at element interp points
 v_xI=zeros(1,Mp-2,K(1)*Np*K(2));
 v_yI=zeros(1,Mp-2,K(2)*Np*K(1));
 v_xB=zeros(Np*K(2),K(1)+1);
-v_yB=zeros(K(2)+1,Np*K(2));
+v_yB=zeros(K(2)+1,Np*K(1));
 
 %---Node numbering---------------------------------------------------------
 %Element numbering
@@ -72,7 +72,7 @@ y_kp1= reshape(circshift(Eord_y,[-1 0]),[],1);
 EBx=reshape(1:Np*K(2)*(K(1)+1),Np*K(2),(K(1)+1));
 EBl= reshape(EBx(:,1:end-1)',1,1,[]);
 EBr= reshape(EBx(:,2:end)',1,1,[]);
-EBy=reshape(1:Np*K(1)*(K(2)+1),(K(1)+1),Np*K(1));
+EBy=reshape(1:Np*K(1)*(K(2)+1),(K(2)+1),Np*K(1));
 EBb= reshape(EBy(1:end-1,:),1,1,[]);
 EBt= reshape(EBy(2:end,:),1,1,[]);
 %Stream/element associativity (stream in:,element) col-wise
@@ -140,10 +140,17 @@ PR=.7;
 ICfuns{end+1}=@(x,y) (1/PR^14)*(PR^2-min((x/Pa).^2+(y/Pb).^2,PR^2)).^7;
     %Fun 4
 ICfuns{end+1}=@(x,y) moll(x,y,0,0,0.31,0.31);
-    
+    %Strain 4 patch
+S=  [-0.4515, 0.4968, -0.9643, 0.3418];
+dx= [-0.6988, 1.4363, -0.1722, -1.5009];
+dy= [-1.7756, -1.4566, 0.4175, -0.0937];
+p=  [0.6768, 0.3294, 0.5807, 0.2504];
+for m=1:4
+    ICfuns{end+1}=@(x,y) S(m)*exp(-((x-dx(m)).^2+(y-dy(m)).^2)./p(m)^2);
+end
 
 %Iterate over each of the IC funs
-for IC=1:2%numel(ICfuns)
+for IC=5:8%numel(ICfuns)
     w=w+ICfuns{IC}(wxm,wym);
 end
 
@@ -181,6 +188,8 @@ itt=0;
 w_tot_elem=0;
 lap=0;
 lapper=1;
+zmax=1.5*max(max(w));
+zmin=1.5*min(min(w));
 tic
 for t=0:delt:endtime
     if mod(t,skip*delt)<delt
@@ -188,11 +197,11 @@ for t=0:delt:endtime
         tt(itt)=t;
         wxt(:,:,:,itt)=wx;
         surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
-        axis([B,0,GA1*1.5])
+        axis([B,zmin,zmax])
         %Residual calc, used to calc the L^2 norm
         %GA1*exp(-((mod((wxm+1)/2-t*cx/2,1)*2-1).^2/Ga1+(mod((wym+1)/2-t*cy/2,1)*2-1).^2/Gb1))
         R=w-reshape(wx,Np*K(1),Np*K(2))';
-        text(B(1),B(4),GA1*1.5*1.2,['Time: ',num2str(t),char(10),...
+        text(B(1),B(4),zmax*1.5*1.2,['Time: ',num2str(t),char(10),...
             'L^2 norm: ',num2str(sqrt(sum(sum(norm_h.*R.^2)))),char(10),...
             'Mask: ',num2str(length(mask)),char(10),...
             'Done in: ',num2str((endtime-t)*toc/t),char(10),...
@@ -258,12 +267,12 @@ for t=0:delt:endtime
         w_rx= mtimesx(Lr',wx);          %Right interpolated vorticity
         w_bx= mtimesx(Ll',wy);          %Bottom interpolated vorticity
         w_tx= mtimesx(Lr',wy);          %Top interpolated vorticity
+        
         %Boundary fluxes
         if BCtype== 'NoInflow'
             v_xBC= v_xB; v_xBC(:,1)= min(v_xBC(:,1),0); v_xBC(:,end)= max(v_xBC(:,end),0);
             v_yBC= v_yB; v_yBC(1,:)= min(v_yBC(1,:),0); v_yBC(end,:)= max(v_yBC(end,:),0);
         end
-        
         fl= abs( v_xBC(EBl) ).*( w_rx(x_km1).*(sign(v_xB(EBl))+alpha) + w_lx.*(sign(v_xB(EBl))-alpha) );
         fr= abs( v_xBC(EBr) ).*( w_rx.*(sign(v_xB(EBr))+alpha) + w_lx(x_kp1).*(sign(v_xB(EBr))-alpha) );
         fb= abs( v_yBC(EBb) ).*( w_tx(y_km1).*(sign(v_yB(EBb))+alpha) + w_bx.*(sign(v_yB(EBb))-alpha) );
