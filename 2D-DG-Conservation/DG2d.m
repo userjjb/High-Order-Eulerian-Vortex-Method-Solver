@@ -13,17 +13,17 @@ alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
 N= 5;                               %Local vorticity poly order
 M= 5;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1E-7;
-del=2*0.15^2;
+w_thresh=1E-6;
+del=2*0.2^2;
 delt= 0.025;
 skip= 1;
-endtime=28;
+endtime=48;
 DGmask='full';
 BCtype= 'NoInflow';
 TestCase=2;
 %---Global domain initialization (parameters)------------------------------
-B= 3.5*[-1.25 1 -1.25 1];                     %left, right, bottom, top
-K= [32 32];                         %Num elements along x,y
+B= [-1 1 -1 1];                     %left, right, bottom, top
+K= [16 16];                         %Num elements along x,y
 Ex= linspace(B(1),B(2),K(1)+1);     %Elem edges left-right
 Ey= linspace(B(3),B(4),K(2)+1);     %Elem edges bottom-top
 
@@ -120,8 +120,8 @@ moll=@(x,y,dx,dy,a,b) heaviside(1-(((x-dx)/a).^2+((y-dy)/b).^2)).*exp(1+(-1./(1-
 %Intial conditions specification-------------------------------------------
 ICfuns={}; %Create a cell list of functions that define the ICs
     %Gaussian 1
-Ga1=    0.012;
-Gb1=    0.025;
+Ga1=    0.02;
+Gb1=    0.04;
 Gdx1=   0.12; 
 Gdy1=   0.12;
 GA1=    .5;
@@ -133,10 +133,10 @@ Gdx2=   -0.12;
 Gdy2=   -0.12;
 GA2=    .5;
 ICfuns{end+1}=@(x,y) GA2*exp(-(((x)-Gdx2).^2/Ga2+(y-Gdy2).^2/Gb2));
-    %Fun 3
+    %Perlmann (3)
 Pa=1;
-Pb=0.5;
-PR=.7;
+Pb=1;
+PR=1;
 ICfuns{end+1}=@(x,y) (1/PR^14)*(PR^2-min((x/Pa).^2+(y/Pb).^2,PR^2)).^7;
     %Fun 4
 ICfuns{end+1}=@(x,y) moll(x,y,0,0,0.31,0.31);
@@ -148,9 +148,14 @@ p=  [0.6768, 0.3294, 0.5807, 0.2504];
 for m=1:4
     ICfuns{end+1}=@(x,y) S(m)*exp(-((x-dx(m)).^2+(y-dy(m)).^2)./p(m)^2);
 end
+    %Koum \omega^{II}
+Ka=1;
+Kb=2;
+SR=0.8;
+ICfuns{end+1}=@(x,y) 1*(1-min( (((x/Ka).^2+(y/Kb).^2).^2)/SR^4 ,1));
 
 %Iterate over each of the IC funs
-for IC=5:8%numel(ICfuns)
+for IC=3:3%numel(ICfuns)
     w=w+ICfuns{IC}(wxm,wym);
 end
 
@@ -196,12 +201,12 @@ for t=0:delt:endtime
         itt=itt+1;
         tt(itt)=t;
         wxt(:,:,:,itt)=wx;
-        surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
+        surf(wxm,flipud(wym),reshape(wx,Np*K(1),Np*K(2))')
         axis([B,zmin,zmax])
         %Residual calc, used to calc the L^2 norm
         %GA1*exp(-((mod((wxm+1)/2-t*cx/2,1)*2-1).^2/Ga1+(mod((wym+1)/2-t*cy/2,1)*2-1).^2/Gb1))
         R=w-reshape(wx,Np*K(1),Np*K(2))';
-        text(B(1),B(4),zmax*1.5*1.2,['Time: ',num2str(t),char(10),...
+        text(B(1),B(4),zmax*1.2,['Time: ',num2str(t),char(10),...
             'L^2 norm: ',num2str(sqrt(sum(sum(norm_h.*R.^2)))),char(10),...
             'Mask: ',num2str(length(mask)),char(10),...
             'Done in: ',num2str((endtime-t)*toc/t),char(10),...
@@ -214,7 +219,7 @@ for t=0:delt:endtime
 %             lapper=lapper+1;
 %     end
 
-    %---Velocity eval of current timestep's vorticity config-----------
+%---Velocity eval of current timestep's vorticity config-----------
         v_xB(:)=0; v_yB(:)=0; v_xI(:)=0; v_yI(:)=0;
         w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
         w_tot_elem=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
@@ -259,8 +264,6 @@ for t=0:delt:endtime
         
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
-        
-        
         
         %---Advection------------------------------------------------------
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity

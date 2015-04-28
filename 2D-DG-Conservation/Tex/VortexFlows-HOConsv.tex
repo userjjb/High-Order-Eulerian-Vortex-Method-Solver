@@ -365,39 +365,103 @@ Of course the time discretization error of the velocity field will be increased,
 
 %
 \section{Validation and Convergence of Proposed Methods}
-Of primary interest in the development of a new method is validation of it with common test cases, as well as an evaluation of convergence. Validation was performed in several ways; the 7th order polynomial test case by Perlmann \cite{Perlmann1985} for a stationary vortex permits an analytical solution to compare against. Additionally, the test cases of the evolution of an elliptical vortex patch \cite{Koum1997} as well as a system of patches \cite{Strain1996} are considered and compared against. In each of these cases the conservation vorticity was also monitored.
+\subsection{Perlmann: Stationary Vortex}
+Of primary interest in the development of a new method is validation of it with common test cases, as well as an evaluation of convergence. Perlmann's 7th order polynomial was the first case studied \cite{Perlmann1985}. The intial condition is a stationary vortex that permits an analytical solution to compare against. The initial vorticity distribution is of the form
+\be \omega(z)=(1-|z|^2)^7, \; |z|\leq 1  \quad \omega(z)=0, \;|z|>1 \quad z^2=x^2+y^2 \ee
+The $L^2$ norm and total vorticity in the domain are plotted to determine if the resultant advected vorticity matches the expected analytical result.
 
-Actual convergence rate of the method at various order vorticity fields, velocity fields, velocity evaluation step/stage-wise, effective core size, and long time integration also take advantage of the analytical solution available from the Perlmann test case. Qualitative assessment of the convergence rate dependence on the test parameters was also performed for the elliptical patch and system of patches.
+\subsection{Strain: Interacting Vortex Patches}
+Strain's system of interacting random vortex patches \cite{Strain1996} forms the next validation case. Specific initial conditions are specified for each of the vortex patches in Table \ref{table:StrainTable} with the overall system consisting of the linear superposition of each patch
+\be \omega(x,y,0) = \sum_{j=1}^m \Omega_j exp(-((x-x_j)^2 + (y-y_j)^2)/\rho_j^2) \ee
+An explicit data set for the results is not reported, but a set of contour plots illustrates the time evolution. The same parameters are used in the present solver and similar contour plots are compared against the validating set.
 
-Finally several interesting test cases are also presented to attempt to tax the method. First considered is the collision of two vortex pairs. The interaction and merging of collisions of this nature are known to generate very complex secondary structures, and proved to be a useful discriminatory test for resolution of fine scale features. Finally a pair of "leap-frogging" vortex pairs are used to examine the long term stability of the method.
+\begin{table}
+\centering
+\caption{Interacting Vortex Patch Parameters}\label{table:StrainTable}
+\begin{tabular}{lllll}
+\hline
+j & $x_j$    & $y_j$    & $\rho_j$ & $\Omega_j$ \\ \hline
+1 & -0.6988 & -1.7756 & 0.6768  & -0.4515   \\
+2 & 1.4363  & -1.4566 & 0.3294  & 0.4968    \\
+3 & -0.1722 & 0.4175  & 0.5807  & -0.9643   \\
+4 & -1.5009 & -0.0937 & 0.2504  &  0.3418    \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Koumoutsakos: Elliptical Vortex}
+The final validation case is the evolution of an elliptical vortex patch \cite{Koum1997}. The specific initial configuration is specified as
+\be \omega^{II}(r) = 20(1-(r/0.8)^4), \; r\leq 0.8 \quad \omega^{II}(r)=0, \; r>0.8 \ee
+however the cases tested were actually elliptical, to accommodate this the initial distribution was modified to
+\be \omega^{II}(x,y,0)_{mod} = 20(1-((x/a)^2+(y/b)^2)^2/0.8^4 ) \quad a=1, \; b=2 \ee
+The contour levels are specified in the resultant figure as 0.25, 0.50, 1, 2, ..., 20; these levels are used in the current code's resultant plot for direct comparison.
+
+\subsection{Other}
+Analytical convergence rate of the method at various order vorticity fields, velocity fields, velocity evaluation step/stage-wise, effective core sizes, and long time integrations also take advantage of the analytical solution available from the Perlmann test case. The elliptical patch and system of interacting  patches also receive a qualitative assessment of the convergence rate, and their dependence on the test parameters.
 
 %------------------------------------
 \chapter{Results}
-\section{Analytical Test Cases}
-\newpage.
-\newpage.
-\newpage.
-\newpage
-\section{Elliptical Blob}
-\newpage.
-\newpage.
-\newpage
-\section{Arbitrary Patch}
-\newpage.
-\newpage.
-\newpage
-\section{Vortex Pair}
-\newpage.
-\newpage.
-\newpage
-\section{Vortical System}
-\newpage.
-\newpage.
-\newpage
+\section{Validation}
+\subsection{Perlmann: Stationary Vortex}
+Although it is expected that in the stationary vortex case the choice of stage or step-wise velocity evaluation shouldn't matter, to minimize any sources of error or confounding factors a stage-wise evaluation was used during validation studies. To fully validate the method the largest combination of order and number of elements was chosen that still permitted a reasonable runtime to 48 seconds. This is close to 4 full revolutions, where the period is $T_p = \frac{4 \pi}{\omega_{max}}$. This test is denoted P1 and the test conditions (along with all other test cases) are tabulated in \ref{table:TestVars}. All plots likewise are marked with the test case number.
+
+To examine the long-term behavior of the method the $L^2$ norm of the error \ref{fig:L2P1} as well as the dissipation of the total vorticity in the domain \ref{fig:wtotP1} are plotted through the course of the vortex evolution. The final surface plot and contour plot can be seen in Figures \ref{fig:P1surf} and \ref{fig:P1cont} respectively.
+
+\begin{figure}
+\centering
+\includegraphics[width=5in]{wtot_Inner_NM5_K6_delt02_delpt2.PNG}
+\caption{\label{fig:wtotP1}Dissipation of domain-wide vorticity, P1.}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=5in]{L2_Inner_NM5_K6_delt02_delpt2.PNG}
+\caption{\label{fig:L2P1}Discrete $L^2$ norm error, P1.}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=5in]{P1surf.PNG}
+\caption{\label{fig:P1surf}Surface plot of Perlmann vortex at t=48, P1.}
+\end{figure}
+\begin{figure}
+\centering
+\includegraphics[width=5in]{P1cont.PNG}
+\caption{\label{fig:P1cont}Contour plot of Perlmann vortex at t=48, P1.}
+\end{figure}
+
+\subsection{Strain: Interacting Vortex Patches}
+\begin{figure}
+\centering
+\includegraphics[width=5.5in]{StrainPatches.PNG}
+\caption{\label{fig:StrainPatches}Validation case- Evolution of four patches as published in \cite{Strain1996} (Fig. 6), S1.}
+\end{figure}
+\subsection{Koumoutsakos: Elliptical Vortex}
+
+\section{Convergence}
+\subsection{Perlmann: Stationary Vortex}
+
+\subsection{Strain: Interacting Vortex Patches}
+
+\subsection{Koumoutsakos: Elliptical Vortex}
+
+
+\section{Persistent Elliptical Vortex}
+
+\section{Stage vs. Step-wise Velocity Evaluation}
+\begin{figure}
+\centering
+\includegraphics[width=5in]{dL2_NM5_K6.PNG}
+\caption{\label{fig:dL2SS}Ham.}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=5in]{dwtot_NM5_K6.PNG}
+\caption{\label{fig:dwtotSS}Ham.}
+\end{figure}
+
 \section{Reduced Order Velocity}
-\newpage.
-\newpage.
-\newpage
+
 \section{Runtime Speed and Memory Footprint of Solver}
 %------------------------------------
 \chapter{Discussion}
