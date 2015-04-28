@@ -11,19 +11,19 @@ clc
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
 N= 5;                               %Local vorticity poly order
-M= 5;                               %Local velocity poly order
+M= 4;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1E-6;
-del=2*0.2^2;
+del=2*0.15^2;
 delt= 0.025;
 skip= 1;
-endtime=48;
+endtime=28;
 DGmask='full';
 BCtype= 'NoInflow';
 TestCase=2;
 %---Global domain initialization (parameters)------------------------------
-B= [-1 1 -1 1];                     %left, right, bottom, top
-K= [16 16];                         %Num elements along x,y
+B= 3.5*[-1.25 1 -1.25 1];                     %left, right, bottom, top
+K= [32 32];                         %Num elements along x,y
 Ex= linspace(B(1),B(2),K(1)+1);     %Elem edges left-right
 Ey= linspace(B(3),B(4),K(2)+1);     %Elem edges bottom-top
 
@@ -155,7 +155,7 @@ SR=0.8;
 ICfuns{end+1}=@(x,y) 1*(1-min( (((x/Ka).^2+(y/Kb).^2).^2)/SR^4 ,1));
 
 %Iterate over each of the IC funs
-for IC=3:3%numel(ICfuns)
+for IC=5:8%numel(ICfuns)
     w=w+ICfuns{IC}(wxm,wym);
 end
 
@@ -179,10 +179,10 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 srcx=wxm(Nnumy(:,1,Estreamy(:,end))); %Global source location
 srcy=wym(Nnumy(:,1,Estreamy(:,end)));
 %Calculate global kernel for boundary velocity points
-gkernel_xB= permute(bsxfun(@minus,rv_xB(1,2,:,:),srcy(:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
-gkernel_yB= permute(bsxfun(@minus,srcx(:),rv_yB(1,1,:,:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
-gkernel_x= squeeze(bsxfun(@minus,rv_x(1,2,:,:),srcy(:))./(sum(bsxfun(@minus,rv_x,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
-gkernel_y= squeeze(bsxfun(@minus,srcx(:),rv_y(1,1,:,:))./(sum(bsxfun(@minus,rv_y,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
+gkernel_xB= permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
+gkernel_yB= permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
+gkernel_x= squeeze(bsxfun(@minus,srcy(:),rv_x(1,2,:,:))./(sum(bsxfun(@minus,rv_x,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
+gkernel_y= squeeze(bsxfun(@minus,rv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_y,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
 
 %Outer product of vorticity quadrature weights for pre-multiplication,
 %including Jacobian
@@ -201,7 +201,7 @@ for t=0:delt:endtime
         itt=itt+1;
         tt(itt)=t;
         wxt(:,:,:,itt)=wx;
-        surf(wxm,flipud(wym),reshape(wx,Np*K(1),Np*K(2))')
+        surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
         axis([B,zmin,zmax])
         %Residual calc, used to calc the L^2 norm
         %GA1*exp(-((mod((wxm+1)/2-t*cx/2,1)*2-1).^2/Ga1+(mod((wym+1)/2-t*cy/2,1)*2-1).^2/Gb1))
