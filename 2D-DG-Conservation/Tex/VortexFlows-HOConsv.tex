@@ -430,12 +430,26 @@ To examine the long-term behavior of the method the $L^2$ norm of the error \ref
 \end{figure}
 
 \subsection{Strain: Interacting Vortex Patches}
+
 \begin{figure}
 \centering
 \includegraphics[width=5.5in]{StrainPatches.PNG}
 \caption{\label{fig:StrainPatches}Validation case- Evolution of four patches as published in \cite{Strain1996} (Fig. 6), S1.}
 \end{figure}
+
 \subsection{Koumoutsakos: Elliptical Vortex}
+
+
+\begin{table}[h]
+\begin{tabular}{lllllllll}
+\hline
+C  & N & M & KxK & $\Delta t$ & Sta(g)e/Ste(p) & $\sigma$ & $T_{final}$ & BC        \\ \hline
+P1 & 5 & 5 & 6   & 0.02     & p              & 0.2    & 48     & No inflow \\
+S1 & 5 & 5 & 32  &          & p              & 0.15   & 28     & No inflow \\
+K1 & 5 & 5 & 20  & 0.02     & p              & 0.2    & 36     & No inflow \\
+4  &   &   &     &          &                &        &        &           \\ \hline
+\end{tabular}
+\end{table}
 
 \section{Convergence}
 \subsection{Perlmann: Stationary Vortex}
@@ -444,8 +458,6 @@ To examine the long-term behavior of the method the $L^2$ norm of the error \ref
 
 \subsection{Koumoutsakos: Elliptical Vortex}
 
-
-\section{Persistent Elliptical Vortex}
 
 \section{Stage vs. Step-wise Velocity Evaluation}
 \begin{figure}
