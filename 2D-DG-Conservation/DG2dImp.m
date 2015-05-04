@@ -14,16 +14,17 @@ N= 6;                               %Local vorticity poly order
 M= 5;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1E-6;
-del=2*0.15^2;
+del=2*0.1^2;
 delt= 0.025;
 skip= 1;
 endtime=28;
 DGmask='full';
 BCtype= 'NoInflow';
+NearRange=2;
 TestCase=2;
 %---Global domain initialization (parameters)------------------------------
-B= 3.5*[-1.25 1 -1.5 1.2];           %left, right, bottom, top
-K= [5 6];                         %Num elements along x,y
+B= [-1 1 -1 1];           %left, right, bottom, top
+K= [10 10];                         %Num elements along x,y
 Ex= linspace(B(1),B(2),K(1)+1);     %Elem edges left-right
 Ey= linspace(B(3),B(4),K(2)+1);     %Elem edges bottom-top
 
@@ -59,7 +60,8 @@ v_yB=zeros(K(2)+1,Np*K(1));
 
 %---Node numbering---------------------------------------------------------
 %Element numbering
-[Enumx,Enumy]=meshgrid(1:K(1),1:K(2));
+[Enumx,Enumy]= meshgrid(1:K(1),1:K(2));
+Enum= reshape(1:K(1)*K(2),K(2),K(1));
 %Stream global numbering as well as stream to left or right for periodic
 %BCs For instance,pass x_km1 as an index to get the stream left of current
 Eord_x= reshape(1:K(1)*K(2)*Np,K(1),K(2)*Np)';
@@ -87,17 +89,25 @@ Nnumy=reshape(Nnum,Np,1,[]);
 %Interp/quad node locations
 x_w= reshape(bsxfun(@plus,repmat((Qx+1)*(delX/2),1,K(1)),Ex(1:end-1)),[],1);
 y_w= reshape(bsxfun(@plus,repmat((Qx+1)*(delX/2),1,K(2)),Ey(1:end-1)),[],1);
-%Elementwise velocity interp/quad node locations, reflected about axes
-[t2,t1]= meshgrid([y_w;(B(4)-B(3))+y_w],[Ex, (B(2)-B(1))+Ex(2:end)]);
-rv_xB= reshape([t1(:),t2(:)]',1,2,2*K(1)+1,[]);
-[t1,t2]= meshgrid([x_w;(B(2)-B(1))+x_w],[Ey,(B(4)-B(3))+Ey(2:end)]);
-rv_yB= reshape([t1(:),t2(:)]',1,2,2*K(2)+1,[]);
+%Boundary velocity interp/quad node locations, reflected about both axes
+if 1
+    [t2,t1]= meshgrid([y_w;(B(4)-B(3))+y_w],[Ex, (B(2)-B(1))+Ex(2:end)]);
+    rv_xB= reshape([t1(:),t2(:)]',1,2,2*K(1)+1,[]);
+    [t1,t2]= meshgrid([x_w;(B(2)-B(1))+x_w],[Ey,(B(4)-B(3))+Ey(2:end)]);
+    rv_yB= reshape([t1(:),t2(:)]',1,2,2*K(2)+1,[]);
+else
+    [t2,t1]= meshgrid(y_w,Ex);
+    rv_xB= reshape([t1(:),t2(:)]',1,2,2*K(1)+1,[]);
+    [t1,t2]= meshgrid(x_w,Ey);
+    rv_yB= reshape([t1(:),t2(:)]',1,2,2*K(2)+1,[]);
+end
 
+%Internal element interp/quad node locations
 x_v=reshape(bsxfun(@plus,(Qx2(2:end-1)+1)*(delX/2),Ex(1:end-1)),1,[]);
 y_v=reshape(bsxfun(@plus,(Qx2(2:end-1)+1)*(delX/2),Ey(1:end-1)),1,[]);
-[t2,t1]= meshgrid([y_w;(B(4)-B(3))+y_w],[x_v, (B(2)-B(1))+x_v]);
+[t2,t1]= meshgrid(y_w,x_v);
 rv_x= reshape([t1(:),t2(:)]',1,2,2*K(1)*(Mp-2),[]);
-[t1,t2]= meshgrid([x_w;(B(2)-B(1))+x_w],[y_v, (B(2)-B(1))+y_v]);
+[t1,t2]= meshgrid(x_w,y_v);
 rv_y= reshape([t1(:),t2(:)]',1,2,2*K(2)*(Mp-2),[]);
 %Note that the actual velocity node locations for x_streams are (x_v,y_w) and
 %for y_streams are (y_v,x_w). The velocity grid is NOT a square tensor product, but
@@ -138,9 +148,11 @@ Pa=1;
 Pb=1;
 PR=1;
 ICfuns{end+1}=@(x,y) (1/PR^14)*(PR^2-min((x/Pa).^2+(y/Pb).^2,PR^2)).^7;
-    %Fun 4
+vAfx=@(x,y) y.*( (-1./(16*(x.^2+y.^2))) .* (1-(1-min(x.^2+y.^2,1)).^8) );
+vAfy=@(x,y) -x.*( (-1./(16*(x.^2+y.^2))) .* (1-(1-min(x.^2+y.^2,1)).^8) );
+    %Fun (4)
 ICfuns{end+1}=@(x,y) moll(x,y,0,0,0.31,0.31);
-    %Strain 4 patch
+    %Strain (5-8) patch
 S=  [-0.4515, 0.4968, -0.9643, 0.3418];
 dx= [-0.6988, 1.4363, -0.1722, -1.5009];
 dy= [-1.7756, -1.4566, 0.4175, -0.0937];
@@ -148,14 +160,14 @@ p=  [0.6768, 0.3294, 0.5807, 0.2504];
 for m=1:4
     ICfuns{end+1}=@(x,y) S(m)*exp(-((x-dx(m)).^2+(y-dy(m)).^2)./p(m)^2);
 end
-    %Koum \omega^{II}
+    %Koum \omega^{II} (9)
 Ka=1;
 Kb=2;
 SR=0.8;
 ICfuns{end+1}=@(x,y) 1*(1-min( (((x/Ka).^2+(y/Kb).^2).^2)/SR^4 ,1));
 
 %Iterate over each of the IC funs
-for IC=5:8%numel(ICfuns)
+for IC=3%numel(ICfuns)
     w=w+ICfuns{IC}(wxm,wym);
 end
 
@@ -176,25 +188,26 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 %in the stream, each element in the column matches the scalar value of the
 %kernel for that point as one moves col-wise within the source
 %element to match w_elem's ordering.
-srcx=wxm(Nnumy(:,1,Estreamy(:,end))); %Global source location
+srcx=wxm(Nnumy(:,1,Estreamy(:,end))); %Generalized source location
 srcy=wym(Nnumy(:,1,Estreamy(:,end)));
-%Calculate global kernel for boundary velocity points
+%Calculate generalized kernel for boundary velocity points
 gkernel_xB= permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
 gkernel_yB= permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
-gkernel_x= squeeze(bsxfun(@minus,srcy(:),rv_x(1,2,:,:))./(sum(bsxfun(@minus,rv_x,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
-gkernel_y= squeeze(bsxfun(@minus,rv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_y,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
+
+kernel_x= squeeze(bsxfun(@minus,srcy(:),rv_x(1,2,:,:))./(sum(bsxfun(@minus,rv_x,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
+kernel_y= squeeze(bsxfun(@minus,rv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_y,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
 
 %Outer product of vorticity quadrature weights for pre-multiplication,
 %including Jacobian
 QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);
-k2=   zeros(size(wx));          %LSERK stage state
+%Function for selecting nearby elements in range
+Near=@(source) Enum(max(Enumy(source)-NearRange,1):min(Enumy(source)+NearRange,end),...
+    max(Enumx(source)-NearRange,1):min(Enumx(source)+NearRange,end));
+k2= zeros(size(wx)); %LSERK stage state
 mask=0;
 itt=0;
 w_tot_elem=0;
-lap=0;
-lapper=1;
-zmax=1.5*max(max(w));
-zmin=1.5*min(min(w));
+zmax=1.5*max(max(w)); zmin=1.5*min(min(w));
 tic
 for t=0:delt:endtime
     if mod(t,skip*delt)<delt
@@ -211,56 +224,45 @@ for t=0:delt:endtime
             'Mask: ',num2str(length(mask)),char(10),...
             'Done in: ',num2str((endtime-t)*toc/t),char(10),...
             '\omega_{tot}: ',num2str(sum(w_tot_elem))]);
-        text(B(1),B(4),-.5,num2str(lap));
         pause(0.0001)
     end
-%     if mod(t,12)<eps(1)
-%             lap(lapper)=sqrt(sum(sum(norm_h.*R.^2)))
-%             lapper=lapper+1;
-%     end
+    
+    %---Velocity eval of current timestep's vorticity config-----------
+    v_xB(:)=0; v_yB(:)=0; v_xBF(:)=0; v_yBF(:)=0; v_xI(:)=0; v_yI(:)=0; v_xE(:)=0; v_yE(:)=0;
+    w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
+    w_tot_elem=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
+    mask=find(w_tot_elem>w_thresh); %Find "important" elements
+    Nmask=find(not(w_tot_elem>w_thresh));
+    w_elemPre=bsxfun(@times,QwPre,w_elem(:,:,mask)); %Pre-multiply by quad weights for speed
 
-%---Velocity eval of current timestep's vorticity config-----------
-        v_xB(:)=0; v_yB(:)=0; v_xI(:)=0; v_yI(:)=0;
-        w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
-        w_tot_elem=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
-        mask=find(w_tot_elem>w_thresh); %Find "important" elements
-        Nmask=find(not(w_tot_elem>w_thresh));
-        w_elemPre=bsxfun(@times,QwPre,w_elem(:,:,mask)); %Pre-multiply by quad weights for speed
-        
-        msx=sort(reshape(Estreamx(:,mask),[],1));
-        msy=sort(reshape(Estreamy(:,mask),[],1));
-        Nmsx=sort(reshape(Estreamx(:,Nmask),[],1));
-        Nmsy=sort(reshape(Estreamy(:,Nmask),[],1));
-        for it=1:length(mask)
-            w_source=w_elemPre(:,:,it);
-            source= mask(it);
-            
-            %Form local source kernel from local stencil applied to global source kernel
-            kernel_xB= gkernel_xB(:, [1:Np*K(2)] +Np*(K(2)-Enumy(source)), [1:K(1)+1] +(K(1)-Enumx(source)) );
-            kernel_yB= gkernel_yB(:, [1:Np*K(1)] +Np*(K(1)-Enumx(source)), [1:K(2)+1] +(K(2)-Enumy(source)) );
-            v_xB= v_xB + permute(mtimesx(w_source,kernel_xB),[2 3 1]);
-            v_yB= v_yB + permute(mtimesx(w_source,kernel_yB),[3 2 1]);
-            
-            if Mp>2
-                kernel_x= reshape(gkernel_x(:, [1:K(1)*(Mp-2)] +(Mp-2)*(K(1)-Enumx(source)), [1:Np*K(2)] +Np*(K(2)-Enumy(source)) ),Np^2,Mp-2,[]);
-                kernel_y= reshape(gkernel_y(:, [1:K(2)*(Mp-2)] +(Mp-2)*(K(2)-Enumy(source)), [1:Np*K(1)] +Np*(K(1)-Enumx(source)) ),Np^2,Mp-2,[]);
-                v_xI= v_xI + mtimesx(w_source,kernel_x);
-                v_yI= v_yI + mtimesx(w_source,kernel_y);
-            end
-        end
-        switch DGmask
-            case 'reduced'
-            %Assemble elementwise velocities in mask
-            v_xE=[v_xB(EBl(msx)),v_xI(:,:,msx),v_xB(EBr(msx))];
-            v_yE=[v_yB(EBb(msy)),v_yI(:,:,msy),v_yB(EBt(msy))];
-            %Assemble boundary velocities not in mask
-            v_xBQ=[v_xB(EBl(Nmsx)),v_xB(EBr(Nmsx))];
-            v_yBQ=[v_yB(EBb(Nmsy)),v_yB(EBt(Nmsy))];
-            case 'full'
-            v_xE=[v_xB(EBl),v_xI,v_xB(EBr)];
-            v_yE=[v_yB(EBb),v_yI,v_yB(EBt)];
-        end
-        %---Velocity eval ends---------------------------------------------
+    for it=1:length(mask)
+        w_source=w_elemPre(:,:,it);
+        source= mask(it);
+        Lsx= reshape(Estreamx(:, Near(source)),[],1);
+        Lsy= reshape(Estreamy(:, Near(source)),[],1);
+
+        %Form specific source kernel by transforming the generalized source
+        %kernel to the specific source loc
+        kernel_xB= gkernel_xB(:, [1:Np*K(2)] +Np*(K(2)-Enumy(source)), [1:K(1)+1] +(K(1)-Enumx(source)) );
+        kernel_yB= gkernel_yB(:, [1:Np*K(1)] +Np*(K(1)-Enumx(source)), [1:K(2)+1] +(K(2)-Enumy(source)) );
+        %Calculate boundary velocities
+        v_xBt= permute(mtimesx(w_source,kernel_xB),[2 3 1]); v_xB= v_xB + v_xBt;
+        v_yBt= permute(mtimesx(w_source,kernel_yB),[3 2 1]); v_yB= v_yB + v_yBt;
+        %Form far field boundary velocities due to source, add to
+        %existing far field velocities. Be sure to leave out near-field
+        %boundary velocities as these will be included in the whole
+        %element evals
+        v_xBFt= [v_xBt(EBl),v_xBt(EBr)]; v_xBFt(1,:,Lsx)=0; v_xBF= v_xBF + v_xBFt;
+        v_yBFt= [v_yBt(EBb),v_yBt(EBt)]; v_yBFt(1,:,Lsy)=0; v_yBF= v_yBF + v_yBFt;
+
+        v_xI= v_xI + mtimesx(w_source,kernel_x);
+        v_yI= v_yI + mtimesx(w_source,kernel_y);
+
+        %Assemble elementwise velocities in mask
+        v_xE(1,:,Lsx)= v_xE(1,:,Lsx)+ [v_xBt(EBl(Lsx)),v_xI,v_xBt(EBr(Lsx))];
+        v_yE(1,:,Lsy)= v_yE(1,:,Lsy)+ [v_yBt(EBb(Lsy)),v_yI,v_yBt(EBt(Lsy))];
+    end
+    %---Velocity eval ends---------------------------------------------
         
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
@@ -285,16 +287,11 @@ for t=0:delt:endtime
         SurfFlux_x=bsxfun(@times,fr,LrM)-bsxfun(@times,fl,LlM);
         SurfFlux_y=bsxfun(@times,ft,LrM)-bsxfun(@times,fb,LlM);
         %Nodal stiffness eval
-        switch DGmask
-            case 'reduced'
-            Stiff_x(:,:,msx,:)= mtimesx(v_xE,mtimesx(QwSM,wx(:,:,msx)));
-            Stiff_x(:,:,Nmsx,:)= mtimesx(v_xBQ,mtimesx(QwSMlow,wx(:,:,Nmsx)));
-            Stiff_y(:,:,msy,:)= mtimesx(v_yE,mtimesx(QwSM,wy(:,:,msy)));
-            Stiff_y(:,:,Nmsy,:)= mtimesx(v_yBQ,mtimesx(QwSMlow,wy(:,:,Nmsy)));
-            case 'full'
-            Stiff_x= mtimesx(v_xE,mtimesx(QwSM,wx));
-            Stiff_y= mtimesx(v_yE,mtimesx(QwSM,wy));
-        end
+        Stiff_x= mtimesx(v_xBF,mtimesx(QwSMlow,wx));
+        Stiff_x= Stiff_x + mtimesx(v_xE,mtimesx(QwSM,wx));
+        Stiff_y= mtimesx(v_yBF,mtimesx(QwSMlow,wy));
+        Stiff_y= Stiff_y + mtimesx(v_yE,mtimesx(QwSM,wy));
+
 
         wx_dt= permute(Stiff_x-SurfFlux_x,[4 1 3 2]); %Reshape to match wx
         wy_dt= reshape(reshape(Stiff_y-SurfFlux_y,K(2),[])',Np,1,[]); %Reshape to match wx
@@ -304,9 +301,3 @@ for t=0:delt:endtime
         wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
     end
 end
-a=sum(w_tot_elem);
-wy= reshape(w,Np,1,[]);
-w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1));
-w_tot_elem=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2]));
-b=sum(w_tot_elem);
-a-b
