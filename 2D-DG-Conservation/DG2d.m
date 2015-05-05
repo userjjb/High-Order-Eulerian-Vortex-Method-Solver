@@ -23,7 +23,7 @@ BCtype= 'NoInflow';
 TestCase=2;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];                     %left, right, bottom, top
-K= [30 30];                         %Num elements along x,y
+K= [10 10];                         %Num elements along x,y
 Ex= linspace(B(1),B(2),K(1)+1);     %Elem edges left-right
 Ey= linspace(B(3),B(4),K(2)+1);     %Elem edges bottom-top
 
