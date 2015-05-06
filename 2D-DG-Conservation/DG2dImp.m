@@ -70,8 +70,8 @@ for t=0:delt:EndTime
         v_yBFt= [v_yBt(EBb),v_yBt(EBt)]; v_yBFt(1,:,NsyS)=0; v_yBF= v_yBF + v_yBFt;
 
         %Assemble elementwise velocities for elements nearby the source
-        v_xE(1,:,NsxS)= v_xE(1,:,NsxS)+ [v_xBt(EBl(NsxS)), mtimesx(w_source, kernel_x(:,:,1:numS(source),it)) ,v_xBt(EBr(NsxS))];
-        v_yE(1,:,NsyS)= v_yE(1,:,NsyS)+ [v_yBt(EBb(NsyS)), mtimesx(w_source, kernel_y(:,:,1:numS(source),it)) ,v_yBt(EBt(NsyS))];
+        v_xE(1,:,NsxS)= v_xE(1,:,NsxS)+ [v_xBt(EBl(NsxS)), mtimesx(w_source, kernel_x(:,:,1:numS(source),source)) ,v_xBt(EBr(NsxS))];
+        v_yE(1,:,NsyS)= v_yE(1,:,NsyS)+ [v_yBt(EBb(NsyS)), mtimesx(w_source, kernel_y(:,:,1:numS(source),source)) ,v_yBt(EBt(NsyS))];
     end
     %---Velocity eval ends---------------------------------------------
         
