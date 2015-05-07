@@ -18,7 +18,7 @@ M= 5;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1E-6;
 del=2*0.2^2;
-delt= 0.01;
+delt= 0.016;
 skip= 1;
 EndTime=3;
 DGmask='full';
@@ -26,7 +26,7 @@ BCtype= 'NoInflow';
 NearRange=1;
 TestCases=3;
 %---Global domain initialization (parameters)------------------------------
-B= [-1 1 -1 1];           %left, right, bottom, top
+B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
 K= [10 10];               %Num elements along x,y
 
 %Calculate all derived solver parameters (node/boundary/element positions

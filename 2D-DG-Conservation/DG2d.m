@@ -14,7 +14,7 @@ N= 6;                               %Local vorticity poly order
 M= 5;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1E-6;
-del=2*0.1^2;
+del=2*0.39375^2;
 delt= 0.0192;
 skip= 1;
 endtime=28;
@@ -179,10 +179,10 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 srcx=wxm(Nnumy(:,1,Estreamy(:,end))); %Global source location
 srcy=wym(Nnumy(:,1,Estreamy(:,end)));
 %Calculate global kernel for boundary velocity points
-gkernel_xB= permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
-gkernel_yB= permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
-gkernel_x= squeeze(bsxfun(@minus,srcy(:),rv_x(1,2,:,:))./(sum(bsxfun(@minus,rv_x,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
-gkernel_y= squeeze(bsxfun(@minus,rv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_y,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
+gkernel_xB=(1/(4*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
+gkernel_yB=(1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
+gkernel_x= (1/(4*pi))*squeeze(bsxfun(@minus,srcy(:),rv_x(1,2,:,:))./(sum(bsxfun(@minus,rv_x,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
+gkernel_y= (1/(4*pi))*squeeze(bsxfun(@minus,rv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_y,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
 
 %Outer product of vorticity quadrature weights for pre-multiplication,
 %including Jacobian
