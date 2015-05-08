@@ -22,8 +22,8 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 srcx=wxm(Nnumy(:,1,Estreamy(:,end) )); %Generalized source location
 srcy=wym(Nnumy(:,1,Estreamy(:,end) ));
 %Calculate generalized kernel for boundary velocity points
-gkernel_xB= (1/(4*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
-gkernel_yB= (1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
+gkernel_xB= (1/(4*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 4 3 2]);
+gkernel_yB= (1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 4 3 2]);
 
 rv_xS=zeros(1,2,Mp-2,Np*(2*NearRange+1)^2,Enum(end,end)); rv_yS=rv_xS;
 Nsx=zeros(Np*(2*NearRange+1)^2,Enum(end,end)); Nsy=Nsx;
@@ -37,8 +37,8 @@ end
 
 srcx=wxm(reshape(Nnumy(:,1,Estreamy),Np^2,1,1,1,[]));
 srcy=wym(reshape(Nnumy(:,1,Estreamy),Np^2,1,1,1,[]));
-kernel_x= (1/(4*pi))*permute(bsxfun(@minus,srcy,rv_xS(1,2,:,:,:))./(sum(bsxfun(@minus,rv_xS,[srcx,srcy]).^2,2)+2*del^2).^(3/2),[1 3 4 5 2]);
-kernel_y= (1/(4*pi))*permute(bsxfun(@minus,rv_yS(1,1,:,:,:),srcx)./(sum(bsxfun(@minus,rv_yS,[srcx,srcy]).^2,2)+2*del^2).^(3/2),[1 3 4 5 2]);
+kernel_x= (1/(4*pi))*permute(bsxfun(@minus,srcy,rv_xS(1,2,:,:,:))./(sum(bsxfun(@minus,rv_xS,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 4 5 2]);
+kernel_y= (1/(4*pi))*permute(bsxfun(@minus,rv_yS(1,1,:,:,:),srcx)./(sum(bsxfun(@minus,rv_yS,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 4 5 2]);
 clearvars srcx srcy %rv_xS rv_yS
 
 %Outer product of vorticity quadrature weights for pre-multiplication,

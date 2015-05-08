@@ -1,15 +1,15 @@
 clear all
-N=5;
+N=7;
 [Qx,Qw] = GLquad(N);
 nd=(Qx+1)/2;
 
 [Qx2,Qw2] = GLquad(2*N);
 nd2=(Qx2+1)/2;
 
-a=0.3;
-b=0.3;
-dx=0.5; 
-dy=0.5;
+a=0.2;
+b=0.2;
+dx=0.4; 
+dy=0.4;
 w=@(x,y) 15*exp(-((x-dx).^2/a+(y-dy).^2/b));%Center is at (dx,dy)
 
 [xx,yy]=meshgrid(nd,nd);
@@ -24,8 +24,11 @@ W2=interp_w(xx2,yy2);
 
 del=.5;
 
-for nx=1:N
-Tx=nd(nx);
+M=N-1;
+[Qx3,Qw3]= LGLquad(M);
+nd3=(Qx3+1)/2;
+for nx=1:M
+Tx=nd3(nx);
 %fprintf('%i ',nx)
     for ny=1:N
         Ty=nd(ny);
@@ -43,4 +46,9 @@ Tx=nd(nx);
 end
 
 difEQ=E-Q;
+difEI=I-Q;
 difEQ2=E-Q2;
+%[QwS, ~,~]= StiffnessQuadModWeights(nd,nd3);
+
+%Ltwo=sqrt(Qw*difEQ.^2*Qw3'/4)
+Ltwo=sqrt(Qw*difEI.^2*Qw3'/4)

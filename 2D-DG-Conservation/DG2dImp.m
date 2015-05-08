@@ -13,18 +13,18 @@ filename='FirstTest.mat';
 saveQ=0;
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-N= 6;                               %Local vorticity poly order
-M= 5;                               %Local velocity poly order
+N= 9;                               %Local vorticity poly order
+M= 8;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1E-6;
-del=2*0.2^2;
-delt= 0.016;
+del=0.23625;
+delt= 3.6;
 skip= 1;
-EndTime=3;
+EndTime=100;
 DGmask='full';
 BCtype= 'NoInflow';
-NearRange=1;
-TestCases=3;
+NearRange=4;
+TestCases=5:8;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
 K= [10 10];               %Num elements along x,y
