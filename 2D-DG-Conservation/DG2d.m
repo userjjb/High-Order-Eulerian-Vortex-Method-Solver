@@ -10,20 +10,20 @@ clear all
 clc
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-N= 6;                               %Local vorticity poly order
-M= 5;                               %Local velocity poly order
+N= 9;                               %Local vorticity poly order
+M= 8;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1E-6;
-del=2*0.39375^2;
-delt= 0.0192;
+del=0.118125;
+delt= 0.3375;
 skip= 1;
-endtime=28;
+endtime=100;
 DGmask='full';
 BCtype= 'NoInflow';
 TestCase=2;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];                     %left, right, bottom, top
-K= [10 10];                         %Num elements along x,y
+K= [20 20];                         %Num elements along x,y
 Ex= linspace(B(1),B(2),K(1)+1);     %Elem edges left-right
 Ey= linspace(B(3),B(4),K(2)+1);     %Elem edges bottom-top
 
@@ -179,10 +179,10 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 srcx=wxm(Nnumy(:,1,Estreamy(:,end))); %Global source location
 srcy=wym(Nnumy(:,1,Estreamy(:,end)));
 %Calculate global kernel for boundary velocity points
-gkernel_xB=(1/(4*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
-gkernel_yB=(1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2),[1 4 3 2]);
-gkernel_x= (1/(4*pi))*squeeze(bsxfun(@minus,srcy(:),rv_x(1,2,:,:))./(sum(bsxfun(@minus,rv_x,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
-gkernel_y= (1/(4*pi))*squeeze(bsxfun(@minus,rv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_y,[srcx(:),srcy(:)]).^2,2)+2*del^2).^(3/2));
+gkernel_xB=(1/(4*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 4 3 2]);
+gkernel_yB=(1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 4 3 2]);
+gkernel_x= (1/(4*pi))*squeeze(bsxfun(@minus,srcy(:),rv_x(1,2,:,:))./(sum(bsxfun(@minus,rv_x,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2));
+gkernel_y= (1/(4*pi))*squeeze(bsxfun(@minus,rv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_y,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2));
 
 %Outer product of vorticity quadrature weights for pre-multiplication,
 %including Jacobian
@@ -219,12 +219,7 @@ for t=0:delt:endtime
 %             lapper=lapper+1;
 %     end
 
-
-        
-    for i=1:nS
-        St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
-        
-        %---Velocity eval of current timestep's vorticity config-----------
+%---Velocity eval of current timestep's vorticity config-----------
         v_xB(:)=0; v_yB(:)=0; v_xI(:)=0; v_yI(:)=0;
         w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
         w_tot_elem=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
@@ -266,6 +261,10 @@ for t=0:delt:endtime
             v_yE=[v_yB(EBb),v_yI,v_yB(EBt)];
         end
         %---Velocity eval ends---------------------------------------------
+
+        
+    for i=1:nS
+        St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
         
         %---Advection------------------------------------------------------
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity

@@ -22,7 +22,7 @@ interp_w=@(x,y) reshape(diag(Lag(reshape(x,1,[]),1:N)'*(W'*Lag(reshape(y,1,[]),1
 
 W2=interp_w(xx2,yy2);
 
-del=.5;
+del=.25;
 
 M=N-1;
 [Qx3,Qw3]= LGLquad(M);
@@ -46,9 +46,9 @@ Tx=nd3(nx);
 end
 
 difEQ=E-Q;
-difEI=I-Q;
+difIQ=I-Q;
 difEQ2=E-Q2;
 %[QwS, ~,~]= StiffnessQuadModWeights(nd,nd3);
 
 %Ltwo=sqrt(Qw*difEQ.^2*Qw3'/4)
-Ltwo=sqrt(Qw*difEI.^2*Qw3'/4)
+Ltwo=sqrt(Qw*difIQ.^2*Qw3'/4)

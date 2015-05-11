@@ -16,18 +16,18 @@ alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
 N= 9;                               %Local vorticity poly order
 M= 8;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1E-6;
-del=0.23625;
-delt= 3.6;
-skip= 1;
-EndTime=100;
+w_thresh=1E-9;
+del=0.073828125/1.5;
+delt= .08;
+LogPeriod= uint64(1);
+EndTime=50;
 DGmask='full';
 BCtype= 'NoInflow';
-NearRange=4;
-TestCases=5:8;
+NearRange=7;
+TestCases=0;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
-K= [10 10];               %Num elements along x,y
+K= [48 48];               %Num elements along x,y
 
 %Calculate all derived solver parameters (node/boundary/element positions
 %and numbering, discrete norm, and pre-allocate vorticity/velocity vars
@@ -39,7 +39,7 @@ w=InitialConditions(w,TestCases,wxm,wym);
 run('SolverSetup')
 tic
 for t=0:delt:EndTime
-    if mod(t,skip*delt)<delt
+    if mod(StepNum,LogPeriod)==0
         run('PlotNSave')
     end
     
@@ -49,16 +49,18 @@ for t=0:delt:EndTime
     w_tot=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
     mask=find(w_tot>w_thresh); %Find "important" elements
     w_elemPre=bsxfun(@times,QwPre,w_elem(:,:,mask)); %Pre-multiply by quad weights for speed
-
+    
+    v_xI= reshape(mtimesx(w_elemPre, kernel_x),1,Mp-2,Np*(2*NearRange+1)^2,[]);
+    v_yI= reshape(mtimesx(w_elemPre, kernel_y),1,Mp-2,Np*(2*NearRange+1)^2,[]);
     for it=1:length(mask)
         w_source=w_elemPre(:,:,it);
-        source= mask(it);
-        NsxS=Nsx(1:numS(source),source);
-        NsyS=Nsy(1:numS(source),source);
+        Src= mask(it);
+        NsxS=Nsx(1:numS(Src),Src);
+        NsyS=Nsy(1:numS(Src),Src);
         %Form specific source kernel by transforming the generalized source
         %kernel to the specific source loc
-        kernel_xB= gkernel_xB(:, [1:Np*K(2)] +Np*(K(2)-Enumy(source)), [1:K(1)+1] +(K(1)-Enumx(source)) );
-        kernel_yB= gkernel_yB(:, [1:Np*K(1)] +Np*(K(1)-Enumx(source)), [1:K(2)+1] +(K(2)-Enumy(source)) );
+        kernel_xB= gkernel_xB(:, [1:Np*K(2)] +Np*(K(2)-Enumy(Src)), [1:K(1)+1] +(K(1)-Enumx(Src)) );
+        kernel_yB= gkernel_yB(:, [1:Np*K(1)] +Np*(K(1)-Enumx(Src)), [1:K(2)+1] +(K(2)-Enumy(Src)) );
         %Calculate boundary velocities
         v_xBt= permute(mtimesx(w_source,kernel_xB),[2 3 1]); v_xB= v_xB + v_xBt;
         v_yBt= permute(mtimesx(w_source,kernel_yB),[3 2 1]); v_yB= v_yB + v_yBt;
@@ -70,8 +72,8 @@ for t=0:delt:EndTime
         v_yBFt= [v_yBt(EBb),v_yBt(EBt)]; v_yBFt(1,:,NsyS)=0; v_yBF= v_yBF + v_yBFt;
 
         %Assemble elementwise velocities for elements nearby the source
-        v_xE(1,:,NsxS)= v_xE(1,:,NsxS)+ [v_xBt(EBl(NsxS)), mtimesx(w_source, kernel_x(:,:,1:numS(source),source)) ,v_xBt(EBr(NsxS))];
-        v_yE(1,:,NsyS)= v_yE(1,:,NsyS)+ [v_yBt(EBb(NsyS)), mtimesx(w_source, kernel_y(:,:,1:numS(source),source)) ,v_yBt(EBt(NsyS))];
+        v_xE(1,:,NsxS)= v_xE(1,:,NsxS)+ [v_xBt(EBl(NsxS)), v_xI(1,:,Lsx(1:numS(Src),Src),it) ,v_xBt(EBr(NsxS))];
+        v_yE(1,:,NsyS)= v_yE(1,:,NsyS)+ [v_yBt(EBb(NsyS)), v_yI(1,:,Lsy(1:numS(Src),Src),it) ,v_yBt(EBt(NsyS))];
     end
     %---Velocity eval ends---------------------------------------------
         

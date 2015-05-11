@@ -1,8 +1,5 @@
 Estreamy= Estreamy; %Make Matlab explicitly aware this is a variable
 
-%Function for selecting nearby elements in range
-Near=@(source) Enum(max(Enumy(source)-NearRange,1):min(Enumy(source)+NearRange,end),...
-    max(Enumx(source)-NearRange,1):min(Enumx(source)+NearRange,end));
 %Setup:
 %Weighting basis with lumped outside terms to save on calculation for
 %numerical total nodal surface flux term: \hat{f}_R L_j(x_R)-\hat{f}_L L_j(x_L)
@@ -25,21 +22,36 @@ srcy=wym(Nnumy(:,1,Estreamy(:,end) ));
 gkernel_xB= (1/(4*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 4 3 2]);
 gkernel_yB= (1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 4 3 2]);
 
-rv_xS=zeros(1,2,Mp-2,Np*(2*NearRange+1)^2,Enum(end,end)); rv_yS=rv_xS;
-Nsx=zeros(Np*(2*NearRange+1)^2,Enum(end,end)); Nsy=Nsx;
+%% Near kernel and local params
+%Function for selecting nearby elements in range, local stream coords
+LEnum= reshape(1:(2*NearRange+1)^2,2*NearRange+1,[]);
+Local= @(source) LEnum( (max(Enumy(source)-NearRange,1):min(Enumy(source)+NearRange,K(2)))-Enumy(source)+NearRange+1 ,...
+    (max(Enumx(source)-NearRange,1):min(Enumx(source)+NearRange,K(1)))-Enumx(source)+NearRange+1 );
+Lstreamx= reshape(reshape(1:Np*(2*NearRange+1)^2,2*NearRange+1,[])',Np,[]);
+Lstreamy= reshape(permute(reshape(reshape(1:Np*(2*NearRange+1)^2,2*NearRange+1,[])',Np,2*NearRange+1,[]),[1 3 2]),Np,[]);
+
+%Function for selecting nearby elements in range, global stream coords
+Near=@(source) Enum(max(Enumy(source)-NearRange,1):min(Enumy(source)+NearRange,end),...
+    max(Enumx(source)-NearRange,1):min(Enumx(source)+NearRange,end));
+
+Nsx=zeros(Np*(2*NearRange+1)^2,Enum(end,end)); Nsy=Nsx; Lsx=Nsx; Lsy=Lsx;
 for Src=1:Enum(end,end)
     numS(Src)=Np*numel(Near(Src));
     Nsx(1:numS(Src),Src)= sort(reshape(Estreamx(:, Near(Src)),[],1));
     Nsy(1:numS(Src),Src)= sort(reshape(Estreamy(:, Near(Src)),[],1));
-    rv_xS(:,:,:,1:numS(Src),Src)= rv_x(:,:,:,Nsx(1:numS(Src),Src) );
-    rv_yS(:,:,:,1:numS(Src),Src)= rv_y(:,:,:,Nsy(1:numS(Src),Src) );
+    Lsx(1:numS(Src),Src)= sort(reshape(Lstreamx(:, Local(Src)),[],1));
+    Lsy(1:numS(Src),Src)= sort(reshape(Lstreamy(:, Local(Src)),[],1));
 end
 
-srcx=wxm(reshape(Nnumy(:,1,Estreamy),Np^2,1,1,1,[]));
-srcy=wym(reshape(Nnumy(:,1,Estreamy),Np^2,1,1,1,[]));
-kernel_x= (1/(4*pi))*permute(bsxfun(@minus,srcy,rv_xS(1,2,:,:,:))./(sum(bsxfun(@minus,rv_xS,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 4 5 2]);
-kernel_y= (1/(4*pi))*permute(bsxfun(@minus,rv_yS(1,1,:,:,:),srcx)./(sum(bsxfun(@minus,rv_yS,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 4 5 2]);
-clearvars srcx srcy %rv_xS rv_yS
+[t2,t1]= meshgrid(reshape(bsxfun(@plus,Qx/2,-NearRange:NearRange)*delX,1,[]),...
+    reshape(bsxfun(@plus,Qx2(2:end-1)/2,-NearRange:NearRange)*delX,1,[]));
+Nrv_x= reshape([t1(:),t2(:)]',1,2,[]);
+Nrv_y= reshape([t2(:),t1(:)]',1,2,[]);
+[srcx,srcy]= meshgrid(Qx*(delX/2),Qx*(delX/2));
+kernel_x= (1/(4*pi))*permute(bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 3 4 2]);
+kernel_y= (1/(4*pi))*permute(bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 3 4 2]);
+clearvars t1 t2 Nrv_x Nrv_y srcx srcy Local LEnum Lstreamx Lstreamy
+%%
 
 %Outer product of vorticity quadrature weights for pre-multiplication,
 %including Jacobian
@@ -50,3 +62,4 @@ mask=find(w_tot>w_thresh);
 setup=[sum(w_tot),N,M,del,delt,EndTime,K(1),K(2),B,TestCases];
 zmax=1.5*max(max(w)); zmin=1.5*min(min(w));
 itt=0;
+StepNum=uint64(0);

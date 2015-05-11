@@ -45,6 +45,11 @@ SR=0.8;
 ICfuns{end+1}=@(x,y) 1*(1-min( (((x/Ka).^2+(y/Kb).^2).^2)/SR^4 ,1));
 
 %Iterate over each of the IC funs
-for IC=TestCases
-    w=w+ICfuns{IC}(wxm,wym);
+if TestCases
+    for IC=TestCases
+        w=w+ICfuns{IC}(wxm,wym);
+    end
+else
+    load('9_48_400_w0.mat')
+    w=w0;
 end
