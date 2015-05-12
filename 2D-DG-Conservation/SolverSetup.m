@@ -59,7 +59,7 @@ QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);
 k2= zeros(size(wx)); %LSERK stage state
 w_tot=abs(permute(mtimesx(reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)),QwPre'),[3 1 2]));
 mask=find(w_tot>w_thresh);
-setup=[sum(w_tot),N,M,del,delt,EndTime,K(1),K(2),B,TestCases];
+setup=[sum(w_tot),N,M,del,delt,EndTime,K(1),K(2),B,TestCases,NearRange];
 zmax=1.5*max(max(w)); zmin=1.5*min(min(w));
 itt=0;
 StepNum=uint64(0);

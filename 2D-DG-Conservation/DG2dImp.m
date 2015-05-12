@@ -9,21 +9,21 @@ close all
 clear all
 clc
 
-filename='FirstTest.mat';
-saveQ=0;
+%Should match G309 best, compare against P301
+filename='6_48_100_StepRerun(300).mat';
+saveQ=1;
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-N= 9;                               %Local vorticity poly order
-M= 8;                               %Local velocity poly order
+N= 6;                               %Local vorticity poly order
+M= 6;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1E-9;
-del=0.073828125/1.5;
-delt= .08;
+w_thresh=4E-9;
+del=0.5*(7.875/20);
+delt= 1*.008;
+EndTime=.75;
 LogPeriod= uint64(1);
-EndTime=50;
-DGmask='full';
 BCtype= 'NoInflow';
-NearRange=7;
+NearRange=8;
 TestCases=0;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
@@ -42,6 +42,7 @@ for t=0:delt:EndTime
     if mod(StepNum,LogPeriod)==0
         run('PlotNSave')
     end
+    StepNum= StepNum+1;
     
     %---Velocity eval of current timestep's vorticity config-----------
     v_xB(:)=0; v_yB(:)=0; v_xBF(:)=0; v_yBF(:)=0; v_xE(:)=0; v_yE(:)=0;
@@ -76,9 +77,10 @@ for t=0:delt:EndTime
         v_yE(1,:,NsyS)= v_yE(1,:,NsyS)+ [v_yBt(EBb(NsyS)), v_yI(1,:,Lsy(1:numS(Src),Src),it) ,v_yBt(EBt(NsyS))];
     end
     %---Velocity eval ends---------------------------------------------
-        
+    
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
+
         
         %---Advection------------------------------------------------------
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity

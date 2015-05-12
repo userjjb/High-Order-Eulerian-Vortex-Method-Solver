@@ -6,8 +6,8 @@ nd=(Qx+1)/2;
 [Qx2,Qw2] = GLquad(2*N);
 nd2=(Qx2+1)/2;
 
-a=0.2;
-b=0.2;
+a=0.1;
+b=0.1;
 dx=0.4; 
 dy=0.4;
 w=@(x,y) 15*exp(-((x-dx).^2/a+(y-dy).^2/b));%Center is at (dx,dy)
@@ -22,7 +22,7 @@ interp_w=@(x,y) reshape(diag(Lag(reshape(x,1,[]),1:N)'*(W'*Lag(reshape(y,1,[]),1
 
 W2=interp_w(xx2,yy2);
 
-del=.25;
+del=.5;
 
 M=N-1;
 [Qx3,Qw3]= LGLquad(M);

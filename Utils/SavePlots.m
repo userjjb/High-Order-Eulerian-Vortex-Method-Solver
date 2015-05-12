@@ -1,3 +1,4 @@
+h=waitbar(0,'Saving plots...');
 fh=figure;
 set(gcf,'PaperPosition',[0 0 10 10]);
 v=[-[.831,.696,.563,.43,.3,.168,.036],0.099,.227,.364];
@@ -12,8 +13,7 @@ for t=1:endt
     set(gcf,'color','w');
     axis equal;
     axis(B);
-    print(gcf,'-r432','-dtiff',['test',num2str(t)]) %4x108 for a 4x1080 image
-    if mod(t,20)<.5
-        fprintf('%i ',floor((endt-t)*toc/t))
-    end
+    print(gcf,'-r432','-dtiff',['test',num2str(t+5001)]) %4x108 for a 4x1080 image
+    waitbar(t/endt,h,sprintf('Estimated time: %i',floor((endt-t)*toc/t)))
 end
+close(h)
