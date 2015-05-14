@@ -13,12 +13,12 @@ run('CalcedParams')
 QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);
 
 w_elem= reshape(permute(reshape(wxG,Np,K(2),Np,K(1),[]),[1 3 2 4 5]),1,Np^2,K(2)*K(1),[]);
-w_totG= sum(squeeze(abs(permute(mtimesx(w_elem,QwPre'),[3 1 2 4]))));
+w_totG= sum(permute(mtimesx(w_elem,QwPre'),[3 4 1 2]));
 w_elem= reshape(permute(reshape(wxP,Np,K(2),Np,K(1),[]),[1 3 2 4 5]),1,Np^2,K(2)*K(1),[]);
-w_totP= sum(squeeze(abs(permute(mtimesx(w_elem,QwPre'),[3 1 2 4]))));
+w_totP= sum(permute(mtimesx(w_elem,QwPre'),[3 4 1 2]));
 
 w_elem= reshape(permute(reshape((wxG-wxP).^2,Np,K(2),Np,K(1),[]),[1 3 2 4 5]),1,Np^2,K(2)*K(1),[]);
-w_totL2= sqrt(sum(squeeze(abs(permute(mtimesx(w_elem,QwPre'),[3 1 2 4])))));
+w_totL2= sqrt(sum(permute(mtimesx(w_elem,QwPre'),[3 4 1 2])));
 clearvars w_elem
 
 plot(w_totG,'g')
@@ -34,3 +34,8 @@ plot(w_totL2,'b')
 %Find G step with closest L2 norm
 % w_elem= reshape(permute(reshape(bsxfun(@minus,wxG,wxP(:,:,:,250)).^2,Np,K(2),Np,K(1),[]),[1 3 2 4 5]),1,Np^2,K(2)*K(1),[]);
 % w_totL2= sqrt(sum(squeeze(abs(permute(mtimesx(w_elem,QwPre'),[3 1 2 4]))))); plot(w_totL2,'g')
+
+w_elem= reshape(permute(reshape(bsxfun(@minus,wxR,wxP(:,:,:,301)).^2,Np,K(2),Np,K(1),[]),[1 3 2 4 5]),1,Np^2,K(2)*K(1),[]);
+w_totL2= sqrt(sum(squeeze(abs(permute(mtimesx(w_elem,QwPre'),[3 1 2 4]))))); plot(w_totL2,'g')
+w_elem= reshape(permute(reshape(bsxfun(@minus,wxR,wxG(:,:,:,309)).^2,Np,K(2),Np,K(1),[]),[1 3 2 4 5]),1,Np^2,K(2)*K(1),[]);
+w_totL2= sqrt(sum(squeeze(abs(permute(mtimesx(w_elem,QwPre'),[3 1 2 4]))))); plot(w_totL2,'g')
