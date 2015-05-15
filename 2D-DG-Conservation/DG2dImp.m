@@ -19,15 +19,15 @@ M= 6;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=4E-9;
 del=0.5*(7.875/20);
-delt= 1*.008;
-EndTime=.75;
+delt= 1*.32;
+EndTime=1;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
-NearRange=8;
-TestCases=0;
+NearRange=4;
+TestCases=5:8;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
-K= [48 48];               %Num elements along x,y
+K= [12 12];               %Num elements along x,y
 
 %Calculate all derived solver parameters (node/boundary/element positions
 %and numbering, discrete norm, and pre-allocate vorticity/velocity vars

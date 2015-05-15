@@ -10,20 +10,20 @@ clear all
 clc
 
 %Should match G309 best, compare against P301
-filename='6_36_100.mat';
+filename='6_12_100_Stage_NR5.mat';
 saveQ=1;
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
 N= 6;                               %Local vorticity poly order
 M= 6;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1.77E-9;
+w_thresh=4E-9;
 del=0.5*(7.875/20);
-delt= 1*.032;
+delt= 1*.32;
 EndTime=100;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
-NearRange=6;
+NearRange=5;
 TestCases=5:8;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
@@ -53,13 +53,13 @@ for t=0:delt:EndTime
         mask=find(w_tot>w_thresh); %Find "important" elements
         w_elemPre=bsxfun(@times,QwPre,w_elem); %Pre-multiply by quad weights for speed
 
-        v_xI= reshape(mtimesx(w_elemPre(:,:,mask), kernel_x),1,Mp,Np*(2*NearRange+1)^2,[]);
-        v_yI= reshape(mtimesx(w_elemPre(:,:,mask), kernel_y),1,Mp,Np*(2*NearRange+1)^2,[]);
+        v_xI= reshape(mtimesx(w_elemPre(:,:,mask), kernel_x),1,Mp-1,Np*(2*NearRange+1)^2,[]);
+        v_yI= reshape(mtimesx(w_elemPre(:,:,mask), kernel_y),1,Mp-1,Np*(2*NearRange+1)^2,[]);
         %Calculate boundary velocities
-        v_xBt= permute(mtimesx(w_elemPre(:),'T',kernel_xB),[2 3 1]);
-        v_yBt= permute(mtimesx(w_elemPre(:),'T',kernel_yB),[3 2 1]);
-        v_xBF= [v_xBt(EBl),v_xBt(EBr)];
-        v_yBF= [v_yBt(EBb),v_yBt(EBt)];
+        v_xB= mtimesx(w_elemPre(:),'T',kernel_xB);
+        v_yB= mtimesx(w_elemPre(:),'T',kernel_yB);
+        v_xBF= [v_xB(EBl),v_xB(EBr)];
+        v_yBF= [v_yB(EBb),v_yB(EBt)];
         for it=1:length(mask)
             Src= mask(it);
             %Assemble elementwise velocities for elements nearby the source
@@ -68,8 +68,13 @@ for t=0:delt:EndTime
             v_yE(1,:,Nsy(1:numS(Src),Src))=...
                 v_yE(1,:,Nsy(1:numS(Src),Src)) + v_yI(1,:,Lsy(1:numS(Src),Src),it);
         end
-        v_xB= reshape( v_xBF + v_xE(1,[1,end],:) ,1 );
-        v_yB= reshape( v_yBF + v_yE(1,[1,end],:) ,1 );
+        v_xE(1,end+1,:)=%!!!!!!TODO: Add right boundary velocity
+        v_yE(1,end+1,:)=%^^^^^^^^^^^^^^^^top
+        
+        %!!!!!!!TODO: Add in right/top global domain boundary velocities absent in
+        %v_xE(EBr) / v_yE(EBt)
+        v_xB= reshape( v_xB' + squeeze(v_xE(1,1,:)) ,Np*K(2),K(1)+1 );
+        v_yB= reshape( v_yB' + squeeze(v_yE(1,1,:)) ,K(2)+1,Np*K(1) );
         %---Velocity eval ends---------------------------------------------
         
         %---Advection------------------------------------------------------

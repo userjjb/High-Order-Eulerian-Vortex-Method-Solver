@@ -16,11 +16,12 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 %in the stream, each element in the column matches the scalar value of the
 %kernel for that point as one moves col-wise within the source
 %element to match w_elem's ordering.
-srcx=reshape(wxm(Nnumy(:,1,Estreamy)),Np^2,1,1,1,[]);
-srcy=reshape(wym(Nnumy(:,1,Estreamy)),Np^2,1,1,1,[]);
+srcx=reshape(wxm(Nnumy(:,1,Estreamy)),[],1);
+srcy=reshape(wym(Nnumy(:,1,Estreamy)),[],1);
 
-kernel_xB= (1/(4*pi))*permute(bsxfun(@minus,srcy,rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 4 3 5 2]);
-kernel_yB= (1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx)./(sum(bsxfun(@minus,rv_yB,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 4 3 5 2]);
+kernel_xB= (1/(4*pi))*permute(bsxfun(@minus,srcy,rv_xB(1,2,:))./(sum(bsxfun(@minus,rv_xB,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 2]);
+kernel_yB= (1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:),srcx)./(sum(bsxfun(@minus,rv_yB,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 2]);
+%!!!!!!!!!!TODO: Zero nearby elems for each source elem
 
 %% Near kernel and local params
 %Function for selecting nearby elements in range, local stream coords
@@ -44,7 +45,7 @@ for Src=1:Enum(end,end)
 end
 
 [t2,t1]= meshgrid(reshape(bsxfun(@plus,Qx/2,-NearRange:NearRange)*delX,1,[]),...
-    reshape(bsxfun(@plus,Qx2/2,-NearRange:NearRange)*delX,1,[]));
+    reshape(bsxfun(@plus,Qx2(1:end-1)/2,-NearRange:NearRange)*delX,1,[]));
 Nrv_x= reshape([t1(:),t2(:)]',1,2,[]);
 Nrv_y= reshape([t2(:),t1(:)]',1,2,[]);
 [srcx,srcy]= meshgrid(Qx*(delX/2),Qx*(delX/2));

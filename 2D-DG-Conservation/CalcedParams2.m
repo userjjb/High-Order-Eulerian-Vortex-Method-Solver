@@ -65,9 +65,9 @@ x_w= reshape(bsxfun(@plus,repmat((Qx+1)*(delX/2),1,K(1)),Ex(1:end-1)),[],1);
 y_w= reshape(bsxfun(@plus,repmat((Qx+1)*(delX/2),1,K(2)),Ey(1:end-1)),[],1);
 %Boundary velocity interp/quad node locations, reflected about both axes
 [t2,t1]= meshgrid(y_w,Ex);
-rv_xB= reshape([t1(:),t2(:)]',1,2,2*K(1)+1,[]);
+rv_xB= reshape([t1(:),t2(:)]',1,2,[]);
 [t1,t2]= meshgrid(x_w,Ey);
-rv_yB= reshape([t1(:),t2(:)]',1,2,2*K(2)+1,[]);
+rv_yB= reshape([t1(:),t2(:)]',1,2,[]);
 
 %Internal element interp/quad node locations
 x_v=reshape(bsxfun(@plus,(Qx2(2:end-1)+1)*(delX/2),Ex(1:end-1)),1,[]);
