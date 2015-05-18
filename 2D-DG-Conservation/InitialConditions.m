@@ -50,6 +50,6 @@ if TestCases
         w=w+ICfuns{IC}(wxm,wym);
     end
 else
-    load('6_48_100_Step.mat')
-    w=reshape(wxt(:,:,:,300),7*48,7*48)';
+    load('6_36G12_del.mat')
+    w=reshape(wxt(:,:,:,279),7*36,7*36)';
 end

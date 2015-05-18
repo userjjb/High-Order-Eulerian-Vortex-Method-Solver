@@ -1,15 +1,20 @@
 clear all
-N=7;
+N=6;
+f=7.875/36;%Size of element
+del=0.5*(7.875/20);
+
+f=f/2;
+
 [Qx,Qw] = GLquad(N);
-nd=(Qx+1)/2;
+nd=f*(Qx+1)/1;
 
 [Qx2,Qw2] = GLquad(2*N);
-nd2=(Qx2+1)/2;
+nd2=f*(Qx2+1)/1;
 
-a=0.1;
-b=0.1;
-dx=0.4; 
-dy=0.4;
+a=2*(f*0.3)^2;
+b=2*(f*0.3)^2;
+dx=f*0.8; 
+dy=f*0.8;
 w=@(x,y) 15*exp(-((x-dx).^2/a+(y-dy).^2/b));%Center is at (dx,dy)
 
 [xx,yy]=meshgrid(nd,nd);
@@ -22,26 +27,26 @@ interp_w=@(x,y) reshape(diag(Lag(reshape(x,1,[]),1:N)'*(W'*Lag(reshape(y,1,[]),1
 
 W2=interp_w(xx2,yy2);
 
-del=.5;
-
-M=N-1;
+M=N;
 [Qx3,Qw3]= LGLquad(M);
-nd3=(Qx3+1)/2;
+nd3=f*(Qx3+1)/1;
+
+
+xv=0:(f*2)/10:f*2;
 for nx=1:M
-Tx=nd3(nx);
+Tx=nd3(nx); %nd3
 %fprintf('%i ',nx)
     for ny=1:N
-        Ty=nd(ny);
-
+        Ty=nd(ny); %nd
         k=@(x,y) (y-Ty)./((x-Tx).^2+(y-Ty).^2+del^2).^(3/2);
         K=k(xx,yy);
         K2=k(xx2,yy2);
         
-        nyi= N-(ny-1);
-        E(nyi,nx)=integral2(@(x,y) w(x,y).*k(x,y),0,1,0,1);
-        I(nyi,nx)=integral2(@(x,y) interp_w(x,y).*k(x,y),0,1,0,1);
-        Q(nyi,nx)=Qw*(W.*K)*Qw'/4;
-        Q2(nyi,nx)=Qw2*(W2.*K2)*Qw2'/4;
+        nyi= N-(ny-1); %N
+        E(nyi,nx)=integral2(@(x,y) w(x,y).*k(x,y),0,2*f,0,2*f);
+        I(nyi,nx)=integral2(@(x,y) interp_w(x,y).*k(x,y),0,2*f,0,2*f);
+        Q(nyi,nx)=Qw*(W.*K)*Qw'/f^-2;
+        Q2(nyi,nx)=Qw2*(W2.*K2)*Qw2'/f^-2;
     end
 end
 
@@ -51,4 +56,4 @@ difEQ2=E-Q2;
 %[QwS, ~,~]= StiffnessQuadModWeights(nd,nd3);
 
 %Ltwo=sqrt(Qw*difEQ.^2*Qw3'/4)
-Ltwo=sqrt(Qw*difIQ.^2*Qw3'/4)
+Ltwo=sqrt(Qw*difIQ.^2*Qw3'/f^-2)*(.5/f)

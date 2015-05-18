@@ -1,5 +1,5 @@
-itt=itt+1;
 wxt(:,:,:,itt)=wx;
+tt(itt)=t;
 %surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
 contour(wxm,wym,reshape(wx,Np*K(1),Np*K(2))',[-[.831,.696,.563,.43,.3,.168,.032],0.099,.227,.364],'linewidth',1);
 axis equal
@@ -14,3 +14,4 @@ text(B(1),B(4)*0.8,zmax*1.2,['Time: ',num2str(t),char(10),...
     'Done in: ',num2str((EndTime-t)*toc/t),char(10),...
     '\Delta\omega: ',num2str(setup(1)-sum(w_tot))]);
 pause(0.0001)
+itt=itt+1;

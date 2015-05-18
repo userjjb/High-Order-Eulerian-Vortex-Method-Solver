@@ -1,16 +1,16 @@
 clear all
 clc
 
-load('6_49_100_Stage.mat')
-wxA=wxt;
+load('6_12_100_Stage.mat')
 w_tot0=setup(1); N=setup(2); M=setup(3); del=setup(4); delt=setup(5); EndTime=setup(6); K=setup(7:8); B=setup(9:12);
 run('CalcedParams')
 Estreamx2=Estreamx; Enumx2=Enumx; Enumy2=Enumy; Enum2=Enum;
+wxA=permute(reshape(permute(wxt(:,1,Estreamx,:),[1 3 2 4]),Np,Np,prod(K),[]),[2 1 3 4]);
 
 load('6_48_100_Stage.mat')
-wxE=wxt;
 w_tot0=setup(1); N=setup(2); M=setup(3); del=setup(4); delt=setup(5); EndTime=setup(6); K=setup(7:8); B=setup(9:12);
 run('CalcedParams')
+wxE=permute(reshape(permute(wxt(:,1,Estreamx,:),[1 3 2 4]),Np,Np,prod(K),[]),[2 1 3 4]);
 
 clearvars wxt
 
@@ -18,31 +18,41 @@ nd=(Qx+1)/2;
 nn=elim(nd',nd',[1 3 2]);
 Lag= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(nv,:,:)),bsxfun(@minus,nd(nv),nn(nv,:,:))),3);
 
-NI=49;
-Ip= 1/(2*NI) : 1/NI : 1-1/(2*NI);
-NI2=48;
-Ip2= 1/(2*NI2) : 1/NI2 : 1-1/(2*NI2);
-Ip3= 0.0625/4:.0625/2:1-0.0625/4;
-NI3= numel(Ip3);
+Id=16;
+Ip= 1/(2*Id) : 1/Id : 1-1/(2*Id);
+
+Id2=64;
+Ip2= 1/(2*Id2) : 1/Id2 : 1-1/(2*Id2);
 
 interp_g=@(x,y,G) Lag(x,1:Np)'*(G*Lag(y,1:Np));
+Lx= Lag(Ip,1:Np)';
+Ly= Lag(Ip,1:Np);
+Lx2= Lag(Ip2,1:Np)';
+Ly2= Lag(Ip2,1:Np);
 
 h=waitbar(0);
 tic
 for t=1:size(wxE,4)
-    for Src=1:Enum(end,end)
-        wxIE( NI*(Enumy(Src)-1)+(1:NI), NI*(Enumx(Src)-1)+(1:NI) )= interp_g(Ip,Ip, permute(wxE(:,1,Estreamx(:,Src),t),[3 1 2]) );
+    wxIE= mtimesx(Lx, mtimesx( wxE(:,:,:,t),Ly ) );
+    wxIA= mtimesx(Lx2, mtimesx( wxA(:,:,:,t),Ly2 ) );
+    
+    for i=1:48
+    for j=1:48
+        wxIEM(Id*(i-1)+(1:Id),Id*(j-1)+(1:Id))=wxIE(:,:,i+(j-1)*48);
     end
-    for Src=1:Enum2(end,end)
-        wxIA( NI2*(Enumy2(Src)-1)+(1:NI2), NI2*(Enumx2(Src)-1)+(1:NI2) )= interp_g(Ip2,Ip2, permute(wxA(:,1,Estreamx2(:,Src),t),[3 1 2]) );
     end
-
-    L2(t)= sqrt((delX/NI)^2*sum(sum((wxIE-wxIA).^2)));    
+    for i=1:12
+    for j=1:12
+        wxIAM(Id2*(i-1)+(1:Id2),Id2*(j-1)+(1:Id2))=wxIA(:,:,i+(j-1)*12);
+    end
+    end
+    L2(t)= sqrt((delX/Id)^2*sum((wxIEM(:)-wxIAM(:)).^2));
     waitbar(t/size(wxE,4),h,sprintf('Estimated time: %i',floor((size(wxE,4)-t)*toc/t)))
 end
 close(h)
-plot(L2,'c')
+plot(L2,'g')
 hold on
+
 
 % IpD=bsxfun(@plus,Ip'*delX,Ex(1:end-1));
 % [xx,yy]=meshgrid(IpD(:),IpD(:));

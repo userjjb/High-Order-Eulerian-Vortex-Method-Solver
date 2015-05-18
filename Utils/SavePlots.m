@@ -1,3 +1,6 @@
+w_tot0=setup(1); N=setup(2); M=setup(3); del=setup(4); delt=setup(5); EndTime=setup(6); K=setup(7:8); B=setup(9:12);
+run('CalcedParams')
+
 h=waitbar(0,'Saving plots...');
 fh=figure;
 
