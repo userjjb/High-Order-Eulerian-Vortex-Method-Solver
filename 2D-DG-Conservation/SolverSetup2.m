@@ -10,19 +10,6 @@ LrM=  permute( Lr.*(1./(delX*Qw')) , [2 3 4 1]); %Right elem boundary eval
 
 wx=   reshape(w',Np,1,[]);      %Reshape vorticity for mtimesx_x bsx
 wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
-
-%Intialize scalar kernel values, a specific element stream's kernel should be a
-%matrix of pointwise values: each column corresponds to the matching point
-%in the stream, each element in the column matches the scalar value of the
-%kernel for that point as one moves col-wise within the source
-%element to match w_elem's ordering.
-srcx=reshape(wxm(Nnumy(:,1,Estreamy)),[],1);
-srcy=reshape(wym(Nnumy(:,1,Estreamy)),[],1);
-
-kernel_xB= (1/(4*pi))*permute(bsxfun(@minus,srcy,rv_xB(1,2,:))./(sum(bsxfun(@minus,rv_xB,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 2]);
-kernel_yB= (1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:),srcx)./(sum(bsxfun(@minus,rv_yB,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 2]);
-%!!!!!!!!!!TODO: Zero nearby elems for each source elem
-
 %% Near kernel and local params
 %Function for selecting nearby elements in range, local stream coords
 LEnum= reshape(1:(2*NearRange+1)^2,2*NearRange+1,[]);
@@ -36,7 +23,7 @@ Near=@(source) Enum(max(Enumy(source)-NearRange,1):min(Enumy(source)+NearRange,e
     max(Enumx(source)-NearRange,1):min(Enumx(source)+NearRange,end));
 
 Nsx=zeros(Np*(2*NearRange+1)^2,Enum(end,end)); Nsy=Nsx; Lsx=Nsx; Lsy=Lsx;
-for Src=1:Enum(end,end)
+for Src=1:prod(K)
     numS(Src)=Np*numel(Near(Src));
     Nsx(1:numS(Src),Src)= sort(reshape(Estreamx(:, Near(Src)),[],1));
     Nsy(1:numS(Src),Src)= sort(reshape(Estreamy(:, Near(Src)),[],1));
@@ -52,8 +39,24 @@ Nrv_y= reshape([t2(:),t1(:)]',1,2,[]);
 kernel_x= (1/(4*pi))*permute(bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 3 4 2]);
 kernel_y= (1/(4*pi))*permute(bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 3 4 2]);
 clearvars t1 t2 Nrv_x Nrv_y srcx srcy Local LEnum Lstreamx Lstreamy
-%%
+%% Far field kernel
+%Intialize scalar kernel values, a specific element stream's kernel should be a
+%matrix of pointwise values: each column corresponds to the matching point
+%in the stream, each element in the column matches the scalar value of the
+%kernel for that point as one moves col-wise within the source
+%element to match w_elem's ordering.
+srcx=reshape(wxm(Nnumy(:,1,Estreamy)),[],1);
+srcy=reshape(wym(Nnumy(:,1,Estreamy)),[],1);
 
+kernel_xB= (1/(4*pi))*permute(bsxfun(@minus,srcy,rv_xB(1,2,:))./(sum(bsxfun(@minus,rv_xB,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 2]);
+kernel_yB= (1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:),srcx)./(sum(bsxfun(@minus,rv_yB,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 2]);
+%Zero nearby elems for each source elem so they aren't 
+Erange= reshape(1:Np^2,1,1,[]);
+for Src=1:prod(K)
+    kernel_xB( bsxfun(@plus, Erange, Np^2*(Near(Src)-1)) ,Src )=0;
+    kernel_yB( bsxfun(@plus, Erange, Np^2*(Near(Src)-1)) ,Src )=0;
+end
+%% Misc init
 %Outer product of vorticity quadrature weights for pre-multiplication,
 %including Jacobian
 QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);
@@ -62,5 +65,5 @@ w_tot=abs(permute(mtimesx(reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4])
 mask=find(w_tot>w_thresh);
 setup=[sum(w_tot),N,M,del,delt,EndTime,K(1),K(2),B,TestCases,NearRange];
 zmax=1.5*max(max(w)); zmin=1.5*min(min(w));
-itt=0;
+itt=1;
 StepNum=uint64(0);

@@ -1,6 +1,7 @@
 wxt(:,:,:,itt)=wx;
 tt(itt)=t;
 %surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
+%[-[.831,.696,.563,.43,.3,.168,.032],0.099,.227,.364]
 contour(wxm,wym,reshape(wx,Np*K(1),Np*K(2))',[-[.831,.696,.563,.43,.3,.168,.032],0.099,.227,.364],'linewidth',1);
 axis equal
 axis(B)

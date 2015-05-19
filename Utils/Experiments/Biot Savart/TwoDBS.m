@@ -1,7 +1,7 @@
 clear all
-N=6;
-f=7.875/36;%Size of element
-del=0.5*(7.875/20);
+N=3;
+f=7.875/72;%Size of element
+del=1.55*(7.875/72);
 
 f=f/2;
 
@@ -27,7 +27,7 @@ interp_w=@(x,y) reshape(diag(Lag(reshape(x,1,[]),1:N)'*(W'*Lag(reshape(y,1,[]),1
 
 W2=interp_w(xx2,yy2);
 
-M=N;
+M=N-1;
 [Qx3,Qw3]= LGLquad(M);
 nd3=f*(Qx3+1)/1;
 

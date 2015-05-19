@@ -43,6 +43,16 @@ Ka=1;
 Kb=2;
 SR=0.8;
 ICfuns{end+1}=@(x,y) 1*(1-min( (((x/Ka).^2+(y/Kb).^2).^2)/SR^4 ,1));
+    %Vortex Line (10,11)
+Gb1=    2*0.07^2; 
+Gdy1=   0;
+GA1=    .2;
+ICfuns{end+1}=@(x,y) GA1*exp( -(y-Gdy1-0.1*exp(-((x/2).^2)).*sin(2*x)).^2/Gb1 );%Center is at (dx,dy)
+
+Gb2=    2*0.07^2; 
+Gdy2=   -1/5;
+GA2=    -.2;
+ICfuns{end+1}=@(x,y) GA2*exp( -(y-Gdy2-0.1*sin(2*x)).^2/Gb2 );%Center is at (dx,dy)
 
 %Iterate over each of the IC funs
 if TestCases

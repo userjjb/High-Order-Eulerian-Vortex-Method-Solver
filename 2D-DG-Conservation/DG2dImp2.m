@@ -10,20 +10,20 @@ clear all
 clc
 
 %Should match G309 best, compare against P301
-filename='6_12_100_Stage_NR5.mat';
+filename='temp.mat';
 saveQ=1;
 %Solver parameters
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-N= 6;                               %Local vorticity poly order
-M= 6;                               %Local velocity poly order
+N= 4;                               %Local vorticity poly order
+M= 4;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=4E-9;
+w_thresh=16E-9;
 del=0.5*(7.875/20);
 delt= 1*.32;
 EndTime=100;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
-NearRange=5;
+NearRange=4;
 TestCases=5:8;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
@@ -63,18 +63,18 @@ for t=0:delt:EndTime
         for it=1:length(mask)
             Src= mask(it);
             %Assemble elementwise velocities for elements nearby the source
-            v_xE(1,:,Nsx(1:numS(Src),Src))=...
-                v_xE(1,:,Nsx(1:numS(Src),Src)) + v_xI(1,:,Lsx(1:numS(Src),Src),it);
-            v_yE(1,:,Nsy(1:numS(Src),Src))=...
-                v_yE(1,:,Nsy(1:numS(Src),Src)) + v_yI(1,:,Lsy(1:numS(Src),Src),it);
+            v_xE(1,1:Mp-1,Nsx(1:numS(Src),Src))=...
+                v_xE(1,1:Mp-1,Nsx(1:numS(Src),Src)) + v_xI(1,:,Lsx(1:numS(Src),Src),it);
+            v_yE(1,1:Mp-1,Nsy(1:numS(Src),Src))=...
+                v_yE(1,1:Mp-1,Nsy(1:numS(Src),Src)) + v_yI(1,:,Lsy(1:numS(Src),Src),it);
         end
-        v_xE(1,end+1,:)=%!!!!!!TODO: Add right boundary velocity
-        v_yE(1,end+1,:)=%^^^^^^^^^^^^^^^^top
+        v_xE(1,Mp,:)=1;%!!!!!!TODO: Add right boundary velocity
+        v_yE(1,Mp,:)=1;%^^^^^^^^^^^^^^^^top
         
         %!!!!!!!TODO: Add in right/top global domain boundary velocities absent in
         %v_xE(EBr) / v_yE(EBt)
-        v_xB= reshape( v_xB' + squeeze(v_xE(1,1,:)) ,Np*K(2),K(1)+1 );
-        v_yB= reshape( v_yB' + squeeze(v_yE(1,1,:)) ,K(2)+1,Np*K(1) );
+        v_xB= reshape( v_xB' + [squeeze(v_xE(1,1,:)); DUM] ,Np*K(2),K(1)+1 );
+        v_yB= reshape( v_yB' + [squeeze(v_yE(1,1,:)); DUM] ,K(2)+1,Np*K(1) );
         %---Velocity eval ends---------------------------------------------
         
         %---Advection------------------------------------------------------
