@@ -9,24 +9,24 @@ close all
 clear all
 clc
 
-filename='6_36G12_del_279-285rerun.mat';
+filename='6-2_12GD.mat';
 saveQ=1;
-%Solver parameters
-alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-N= 6;                               %Local vorticity poly order
-M= 6;                               %Local velocity poly order
-[RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1.78E-9;
-del=0.5*(7.875/36);
-delt= 1*.032;
-EndTime=1.92;
-LogPeriod= uint64(1);
-BCtype= 'NoInflow';
-NearRange=12;
-TestCases=0;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
-K= [36 36];               %Num elements along x,y
+K= [12 12];               %Num elements along x,y
+%Solver parameters
+delt= 1;                            %Timestep
+N= 6;                               %Local vorticity poly order
+M= 2;                               %Local velocity poly order
+[RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
+w_thresh=(48^2/prod(K))*1E-9;
+del=0.5*(7.875/K(1));
+EndTime=100;
+LogPeriod= uint64(1);
+BCtype= 'NoInflow';
+NearRange=ceil(K(1)/3);
+TestCases=5:8;
+alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
 
 %Calculate all derived solver parameters (node/boundary/element positions
 %and numbering, discrete norm, and pre-allocate vorticity/velocity vars
@@ -42,10 +42,12 @@ for t=0:delt:EndTime
         run('PlotNSave')
     end; StepNum= StepNum+1;
     
+    
+    
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
 
-            %---Velocity eval of current timestep's vorticity config-----------
+        %---Velocity eval of current timestep's vorticity config-----------
     v_xB(:)=0; v_yB(:)=0; v_xBF(:)=0; v_yBF(:)=0; v_xE(:)=0; v_yE(:)=0;
     w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
     w_tot=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
@@ -77,7 +79,7 @@ for t=0:delt:EndTime
         v_xE(1,:,NsxS)= v_xE(1,:,NsxS)+ [v_xBt(EBl(NsxS)), v_xI(1,:,Lsx(1:numS(Src),Src),it) ,v_xBt(EBr(NsxS))];
         v_yE(1,:,NsyS)= v_yE(1,:,NsyS)+ [v_yBt(EBb(NsyS)), v_yI(1,:,Lsy(1:numS(Src),Src),it) ,v_yBt(EBt(NsyS))];
     end
-    %---Velocity eval ends---------------------------------------------
+    %---Velocity eval ends---------------------------------------------    
     
         %---Advection------------------------------------------------------
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity
