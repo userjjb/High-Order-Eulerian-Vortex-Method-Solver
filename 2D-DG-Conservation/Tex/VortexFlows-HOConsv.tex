@@ -57,7 +57,7 @@ A high-order, conservative Eulerian method will be presented for the simulation 
 \chapter{Introduction}
 \pagenumbering{arabic} %Reset to arabic numbering for mainmatter
 \section{Velocity-Vorticity equation}
-Direct solution of Navier-Stokes is impractical for many fluid problems and where possible simplifications should be made; one such possibility is for vortex dominated flows. It is possible to recast Navier-Stokes from a primitive variable form ($u,v,p$) to a velocity-vorticity ($u,v,\omega$) form. This has several advantages: explicit conservation of vorticity, elimination of pressure, and reduction of required simulated DOFs to just those that form the vorticity support. For inviscid and incompressible flows the vorticity transport equation is:
+Direct solution of Navier-Stokes is impractical for many fluid problems and where possible simplifications should be made; one such possibility is for vortex dominated flows. It is possible to recast Navier-Stokes from a primitive variable form ($u,v,p$) to a velocity-vorticity ($u,v,\omega$) form. This has several advantages: explicit conservation of vorticity, elimination of pressure, and reduction of required simulated degrees of freedom to just those that form the vorticity support. For inviscid and incompressible flows the vorticity transport equation is:
 \ben{VV3D} \frac{\partial \omega}{\partial t} + u \cdot \nabla \omega - \omega \cdot \nabla u = S(x,t)\ee
 
 Traditionally simulation techniques take advantage of Helmholtz and Kelvin's theorems; vorticity exists as material surfaces, lines, etc. and therefore a Lagrangian approach is natural. Typically the vorticity is discretized into vortex particles, lines, or sheets at which point advection becomes trivial, one merely needs to calculate the velocity field at each particle and step forward in time \cite{Strain1996,MoussaCarley2008,KoumLeonard1995}. Several monographs exist that enumerate the details and advantages of Lagrangian vortex methods \cite{Lugt1983,Saffman1992,Speziale1987}.
@@ -101,10 +101,13 @@ Finally, Chapter 8 presents the specific implementation details necessary to imp
 %------------------------------------
 \chapter{Theory}
 \section{Navier-Stokes: Velocity-vorticity form}
-If the quantity \textit{vorticity} is defined as
+The Navier-Stokes momentum equation is
+ \be \rho \left(\frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u} \right) = -\nabla \bar{p} + \mu \nabla^2 \mathbf u + \tfrac13 \, \mu \nabla (\nabla\cdot\mathbf{u}) + \rho \mathbf{g}  \ee
+where $u$ is the velocity field, $p$ is the pressure field, and $\rho$ is the density. If we restrict ourselves to incompressible flows and define the quantity \textit{vorticity} as
 \be \omega = \nabla \times u \ee
-Then the traditional form of the Navier-Stokes equations can be recast, assuming an inviscid incompressible flow
+Then the traditional form of the Navier-Stokes equations can be recast
 \ben{VV3D} \frac{\partial \omega}{\partial t} + u \cdot \nabla \omega - \omega \cdot \nabla u = S(x,t)\ee
+where we collect viscous generation of vorticity in $S$.
 
 There are several benefits to the recast form; first, it explicitly conserves vorticity. The vorticity is recoverable from the primitive variable Navier-Stokes, but the diffusive nature of most upwinded advection means coherent vortical structures are quickly smeared. Also, frequently the distribution of the vorticity is quite sparse. The primitive variable form requires the velocity and pressure be evaluated over the whole domain.
 
@@ -112,27 +115,52 @@ In comparison, the velocity-vorticity form only requires velocity to be evaluate
 
 Additionally, the primitive-variable form requires the pressure be  solved via a separate elliptic equation. The velocity-vorticity form is absent the pressure and automatically ensures satisfaction of continuity.
 
-Restricting  to examining 2-D distributions of vorticity, several simplifications can be made. The originally vectorial vorticity becomes a scalar quantity, all vorticity is directed normal to the plane. As a result, the vortex stretching term in \eqref{VV3D} becomes zero. The only non-zero component of $\omega$ is in the z-direction, however the gradient of the velocity field is zero in the z-direction, so the product is therefore zero. The result is
+For 2-D distributions of vorticity, several simplifications can be made. The originally vectorial vorticity becomes a scalar quantity, all vorticity is directed normal to the plane. As a result, the vortex stretching term in \eqref{VV3D} becomes zero. The only non-zero component of $\omega$ is in the z-direction, however the gradient of the velocity field is zero in the z-direction, so the product is therefore zero. The result is
 \ben{VV2D} \frac{\partial \omega}{\partial t} + u \cdot \nabla \omega = S(x,t)\ee
 or if instead the second term is expressed in terms of the flux of the vorticity (where $f_i(\omega)=u_i\,\omega$):
 \ben{VV2DB} \frac{\partial \omega}{\partial t} + \frac{\partial f}{\partial x_i}= S(x,t)\ee
 
 \section{Velocity Field Evaluation: The Biot-Savart Integral}
-We shall decide that $\omega$ is the quantity of interest in the solution method. However, if this is the case then the question must be posed: how does one determine the velocity field? For an incompressible flow
+Since $\omega$ is the quantity of interest in the flowfield solution, the question must be posed: how does one determine the velocity field? For an incompressible flow we can relate the velocity and vorticity by
 \be \nabla^2 u = -\nabla \times \omega \ee
 If inverted, the Biot-Savart integral is obtained
 \ben{BS} u(x^*) = \int_\Omega K(x^*,x) \times \omega(x) dx \ee
-with the singular Biot-Savart kernel
+where $x^*$ is the point we wish to evaluate the velocity, $x$ is the coordinate in regions of non-zero vorticity, and $K(x^*,x)$ is the singular Biot-Savart kernel
 \ben{BSkern} K(x^*,x) = \frac{-1}{4 \pi} \frac{x^*-x}{|x^*-x|^3} \ee
 
-There are several important points to note that are a consequence of this inversion. First, rather than solving the Poisson equation for the entirety of the domain we choose to evaluate the velocity at some subset. For the purposes of advecting the velocity we will only need velocities near the vorticity itself. However, if the number of required velocity evaluation points is roughly proportional to the $N$ DOFs of our vorticity approximation, then it might be expected for the velocity calculations to scale as $\mathcal{O}(N^2)$.
+There are several important points to note that are a consequence of this inversion. First, rather than solving the Poisson equation for the entirety of the domain we choose to evaluate the velocity at some subset. For the purposes of advecting the velocity we will only need velocities near the vorticity itself. However, if the number of required velocity evaluation points is roughly proportional to the $N$ degrees of freedom of our vorticity approximation, then it might be expected for the velocity calculations to scale as $\mathcal{O}(N^2)$.
 
 There are numerous methods to reduce the computational complexity of similar N-body type problems to $\mathcal{O}(NlogN)$ or $\mathcal{O}(N)$. Cyclic reduction \cite{SchumannSweet1976}, tree-codes \cite{LindsayKrasny2001,BarnesHut1986}, and FMM \cite{GreengardRokhlin1987} are all possibilities. However, because the velocity field calculation method is essentially decoupled from the discretization of the PDE, there is no a priori assurance that the velocity calculated is of sufficient fidelity to ensure convergence of the overall method (let alone convergence at the order one might expect based on solely the discretization). For maximum flexibility in investigating this dependency of overall convergence on the calculated velocity field we shall eschew more efficient techniques so that we can directly control the fidelity of the velocity field.
 
-The second point to consider regarding the Biot-Savart integral is the singular nature of the exact kernel. Lagrangian point vortex methods have the benefit that the singularity and it's associated non-physical velocities occur in a relatively small region; they assume that the advective effect of the point vortex on itself is negligble. Generally, self-influence merely results in solid body rotation. Additionally they will frequently de-singularize the kernel by introducing a core function. The classical one used is the Rosenhead-Moore kernel \cite{Rosenhead1930,Moore1972}:
-\ben{RMkern} K(x^*,x) = \frac{-1}{4 \pi} \frac{x^*-x}{(|x^*-x|^2+\sigma^2)^{3/2}} \ee
+\section{Kernel Desingularization} 
+The second point to consider regarding the Biot-Savart integral is the singular nature of the exact kernel. Lagrangian point vortex methods have the benefit that the singularity and it's associated non-physical velocities occur in a relatively small region; they assume that the advective effect of the point vortex on itself is negligible. Generally, self-influence merely results in solid body rotation. This is the approach taken by early methods \cite{Point1}. While easy to implement, it results in un-physically large velocities when two point vortices approach near each other. The other issue with this approach is poor convergence and accuracy on the resulting velocity field off particle paths as described by Beale and Majda \cite{BealeMajda}.
 
-The high-order Eulerian approach taken here however means that the Biot-Savart integral diverges everywhere within any of the extended vorticity patches thanks to self-influence. The approach taken by Brown \cite{Brown2004} was to use the Rosenhead-Moore kernel, choosing a core size such that the maximum velocity occurred on the face of the finite volume unit. This is constructible a priori because the vorticity is taken as constant across the volume, as is typical in a FV approach. If the vorticity is spatially varying however, the choice of core size is more troublesome. This will be examined in greater detail in the next chapter.
+One may attempt to tame the singularity  by introducing a core function $\eta(^z/_{\delta})$. Heuristically, the point vortex is now replaced by a finite size vortex blob described by $\eta(r)$, with characteristic radius $\delta$. Analytically, the point vortex is essentially a delta function; core functions are desingularized approximations that converge to the delta function as $\delta \rightarrow 0$. Traditionally the core function is convolved with the Biot-Savart kernel to yield a desingularized kernel $K_{\delta}$.
+\be K*\eta(r) = K_{\delta} \ee
+
+The choice of a core function and a characteristic radius has important implications on the accuracy and convergence of a Lagrangian point vortex method. Choosing a cutoff radius too small and there is insufficient smoothing, too large and the vorticity discretization is spatially smeared. The choice of a core function is also nuanced: good approximations of the delta function should preserve both the volume and moments of the delta function \cite{BealeMajda}.
+
+Strictly positive core functions can only preserve the first moment, those preserving more may become negative in small regions. The more moments that are preserved, the higher order the convergence of the underlying method (assuming adequate choice of cutoff radius and sufficiently smooth flow). One may preserve all moments, permitting spectral convergence, with the caveat being the resulting core function does not have compact support. This precludes the use of a tree-code of FMM.
+We present here a range of desingularized kernels that will be employed.
+
+The classical choice is the Rosenhead-Moore kernel \cite{Rosenhead1930,Moore1972}. Note that strictly speaking this kernel does not satisfy convergence proofs as it does not conserve any moments. It is technically a 0th order kernel.
+\ben{RMkern} K_{RM} = \frac{1}{2 \pi} \frac{x^*-x}{|z|^2+\delta^2} \ee
+where we have substituted $z=x^*-x$.
+
+In \cite{WL} Winckelmans and Leonard derived a high-order algebraic kernel that preserves the first moment of the delta function, with second-order formal convergence.
+\ben{WLkern} K_{WL}=\frac{1}{2 \pi} \frac{(z)(|z|^2+2\delta^2)}{(|z|^2+\delta^2)^2} \ee
+
+In \cite{BealeMajda} Beale and Majda extend the super-gaussian core function to explicitly generate arbitrary $m^{th}$ order core functions of the type
+\ben{SGkern} K_{BM}= \frac{z}{2 \pi |z|^2} (1-Q^{(m)}(^z\!/_{\delta})e^{^{-z^2}\!/_{\delta^2}} )\ee
+where $Q^{(m)}(r)$ are Laguerre polynomials of $r^2$ normalized to set the first term to 1.
+
+The final set of kernels used are the spectrally convergent set derived from Bessel functions of the first kind. The simplest appears in \cite{WL} as
+\ben{PSkern}  K_{spectral_0}= \frac{z}{2 \pi |z|^2} (1-J_0(\frac{z}{\delta})) \ee
+with a more involved alternative from \cite{HaldReview}
+\ben{PSkern}  K_{spectral_2}= \frac{z}{2 \pi |z|^2} \left[1-\frac{8}{45(z/\delta)^2}(4J_2(\frac{4z}{\delta})-5J_2(\frac{2z}{\delta})+J_2(\frac{z}{\delta}))\right] \ee
+these have the advantage that \textit{all} moments are conserved, but they do not have compact support. They are also quite expensive to evaluate due to the Bessel evaluations. For a Lagrangian method this is a serious disadvantage (especially if one wishes to employ a FMM); however for an Eulerian method the vorticity solution points are fixed, so the kernel values need only be calculated once and re-used.
+
+The high-order Eulerian approach taken here means that the Biot-Savart integral diverges everywhere within any of the extended vorticity patches thanks to self-influence. The approach taken by Brown \cite{Brown2004} was to use the Rosenhead-Moore kernel, choosing a core size such that the maximum velocity occurred on the face of the finite volume unit. This can be constructed \textit{a priori} because the vorticity is taken as constant across the volume, as is typical in a FV approach. If the vorticity is spatially varying however, the choice of core size is more troublesome. This will be examined in greater detail in the next chapter.
 
 \section{Discontinuous Galerkin}
 In order to solve \eqref{VV2D} we adopt a method-of-lines approach. We will first spatially discretize the system to obtain the semi-discrete system, then we use an explicit time discretization method to march forward in time. Note that \eqref{VV2D} has the form of a scalar conservation law, with $\omega$ being the conserved quantity. The velocity field that advects the conserved quantity has been calculated by evaluation of the Biot-Savart integral for the current timestep.
@@ -172,11 +200,11 @@ Applying a change of variables using the mapping to \eqref{DGtemp}, accounting f
 - \int_{-1}^{1} f(\aomega) \, \frac{d \phi_j}{dX} \;dX = 0 \ee
 (Note: no determinant of the Jacobian matrix appears in the second integral because one of the basis functions has been differentiated. When the chain rule is applied during the change of variables an extra $1/g'(X)$ appears that cancels out with the $g'(X)$ that occurred from the change of variables on the integral).
 
-We have purposely left the flux in the second integral unevaluated in terms of the basis functions, as well as the choice of basis functions left as undecided. We defer these choices to a more in depth investigation in Methodology. We also have developed the equations past the initial PDE in a 1-D form. We will shortly show that the basis coefficients are chosen to be nodal values. The 2-D solution will be recovered following the Line-DG methodology \cite{Persson2013} where each element will be composed of a tensor product of two 1-D discretizations.
+We have purposely left the flux in the second integral unevaluated in terms of the basis functions, as well as the choice of basis functions left as undecided. We defer these choices to a more in depth investigation in \S \ref{DGchoice}. We also have developed the equations past the initial PDE in a 1-D form. We will shortly show that the basis coefficients are chosen to be nodal values. The 2-D solution will be recovered following the Line-DG methodology \cite{Persson2013} where each element will be composed of a tensor product of two 1-D discretizations.
 
 %------------------------------------
 \chapter{Methodology}
-\section{Method Specific DG Choices}
+\section{Method Specific DG Choices} \label{DGchoice}
 We now seek to take the general form of \eqref{DGtemp} and customize it to suit our needs. There are several choices to be made, the space of the basis, the physical meaning of the basis coefficients, and how it is formed on a 2D domain. We shall take the common choice of the space of polynomials for our basis. Additionally we shall choose our basis coefficients to be local nodal values that our basis interpolates.
 
 One could be tempted to choose a modal basis, but for simplicity of extension a nodal basis allows one to readily expand 1D basis functions to 2D by means of a tensor product of two 1D bases. If the two 1D basis are linearly independent, then the tensor product spans $\mathbb{R}^2$. Furthermore, if the bases are orthogonal to each other than each can be treated separately from each other. To illustrate this we must choose our basis functions; a readily specified choice for interpolation is the Lagrange basis
@@ -586,6 +614,14 @@ Lesaint, P., and Pierre-Arnaud Raviart. On a finite element method for solving t
 \bibitem{Persson2013}
 P.O. Persson. A Sparse and High-Order Accurate Line-Based Discontinuous Galerkin Method for Unstructured Meshes. J. Comp. Phys., Vol. 233, pp. 414-429, Jan 2013.
 %Important vortex papers
+\bibitem{HaldReview}
+Hald, Ole H. Convergence of vortex methods. Vortex methods and vortex motion. Vol. 1. 1991.
+\bibitem{Hald3}
+Hald, Ole H. Convergence of vortex methods for Euler's equations, III. SIAM journal on numerical analysis 24.3 (1987): 538-582.
+\bibitem{WL}
+Winckelmans, G. S., and A. Leonard. Contributions to vortex particle methods for the computation of three-dimensional incompressible unsteady flows. Journal of Computational Physics 109.2 (1993): 247-273.
+\bibitem{BealeMajda}
+Beale, J. Thomas, and Andrew Majda. High order accurate vortex methods with explicit velocity kernels. Journal of Computational Physics 58.2 (1985): 188-208.
 \bibitem{Strain1997}
 J. Strain. Fast adaptive 2D vortex methods. Journal of computational physics 132.1 (1997): 108-122.
 \bibitem{LindsayKrasny2001}
