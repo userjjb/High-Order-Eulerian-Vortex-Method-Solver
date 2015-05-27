@@ -1,7 +1,7 @@
 clear all
-N=3;
-f=7.875/72;%Size of element
-del=1.55*(7.875/72);
+N=4;
+f=7.875/48;%Size of element
+del=.4*(7.875/48);
 
 f=f/2;
 
@@ -11,8 +11,8 @@ nd=f*(Qx+1)/1;
 [Qx2,Qw2] = GLquad(2*N);
 nd2=f*(Qx2+1)/1;
 
-a=2*(f*0.3)^2;
-b=2*(f*0.3)^2;
+a=2*(f*0.3*3)^2;
+b=2*(f*0.3*3)^2;
 dx=f*0.8; 
 dy=f*0.8;
 w=@(x,y) 15*exp(-((x-dx).^2/a+(y-dy).^2/b));%Center is at (dx,dy)
@@ -34,11 +34,18 @@ nd3=f*(Qx3+1)/1;
 
 xv=0:(f*2)/10:f*2;
 for nx=1:M
-Tx=nd3(nx); %nd3
+Tx=0*f+nd3(nx); %nd3
 %fprintf('%i ',nx)
     for ny=1:N
         Ty=nd(ny); %nd
-        k=@(x,y) (y-Ty)./((x-Tx).^2+(y-Ty).^2+del^2).^(3/2);
+        Rsq=@(x,y) (x-Tx).^2+(y-Ty).^2;
+        %k=@(x,y) (1/(2*pi))*(y-Ty)./((x-Tx).^2+(y-Ty).^2+del^2).^(3/2); %RM
+        %k=@(x,y) (1/(2*pi))*( (y-Ty).*(Rsq(x,y)+ (2)*del^2) )./(Rsq(x,y)+del^2).^(2); %WL
+        %k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1-exp(-Rsq(x,y)/del^2)); %Gaussian
+        %k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1-(1-(Rsq(x,y)/del^2)).*exp(-Rsq(x,y)/del^2)); %SG
+        %k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1-(1-(2*Rsq(x,y)/del^2+0.5*Rsq(x,y).^2/del^4)).*exp(-Rsq(x,y)/del^2)); %SG6
+        %k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1-besselj(0,sqrt(Rsq(x,y))/del)); %PS
+        k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1- (8./(45*Rsq(x,y)/del^2)).*(4*besselj(2,4*sqrt(Rsq(x,y))/del)-5*besselj(2,2*sqrt(Rsq(x,y))/del)+besselj(2,sqrt(Rsq(x,y))/del))); %PS2
         K=k(xx,yy);
         K2=k(xx2,yy2);
         

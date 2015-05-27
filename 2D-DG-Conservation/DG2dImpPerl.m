@@ -9,31 +9,31 @@ close all
 clear all
 clc
 
-tests=16;
+tests=3:2:13;
 
 for yam=1:numel(tests)
     clearvars wxt tt
     
-filename=['SC6_',num2str(tests(yam)),'GDpt25ps2.mat'];
+filename=['P3_',num2str(tests(yam)),'GDpt4ps2.mat'];
 saveQ=1;
 %---Global domain initialization (parameters)------------------------------
-B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
+B= 1.1*[-1 1 -1 1];           %left, right, bottom, top
 K= [tests(yam) tests(yam)];               %Num elements along x,y
 %Solver parameters
-delt= .32;                            %Timestep
-N= 6;                               %Local vorticity poly order
-M= 6;                               %Local velocity poly order
+delt= .5;                            %Timestep
+N= 3;                               %Local vorticity poly order
+M= 3;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1*(48^2/prod(K))*1E-9;
-del=.25*((B(2)-B(1))/K(1));
-EndTime=28;
+w_thresh=0;%1*(48^2/prod(K))*1E-9;
+del=.4*((B(2)-B(1))/K(1));
+EndTime=20;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
 KernelType='PS2';
-NearRange=ceil(K(1)/3);
-TestCases=5:8;
+NearRange=ceil(K(1)/2);
+TestCases=3;
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-PlotInt=[-[.831,.696,.563,.43,.3,.168,.032],0.099,.227,.364];
+PlotInt=[10.^[-15:2:-1],0.02:.1:1,.98];
 
 %Calculate all derived solver parameters (node/boundary/element positions
 %and numbering, discrete norm, and pre-allocate vorticity/velocity vars

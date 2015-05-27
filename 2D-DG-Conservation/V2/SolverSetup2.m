@@ -50,10 +50,14 @@ srcy=reshape(wym(Nnumy(:,1,Estreamy)),[],1);
 
 kernel_xB= (1/(4*pi))*permute(bsxfun(@minus,srcy,rv_xB(1,2,:))./(sum(bsxfun(@minus,rv_xB,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 2]);
 kernel_yB= (1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:),srcx)./(sum(bsxfun(@minus,rv_yB,[srcx,srcy]).^2,2)+del^2).^(3/2),[1 3 2]);
-%Zero nearby elems for each source elem so they aren't 
+%Zero nearby elems for each source elem so they aren't double counted
+%!!!!!!!TODO: Fix selecting the proper boundary points associated with a
+%source square
 Erange= reshape(1:Np^2,1,1,[]);
 for Src=1:prod(K)
-    kernel_xB( bsxfun(@plus, Erange, Np^2*(Near(Src)-1)) ,Src )=0;
+    kernel_xB( bsxfun(@plus, Erange, Np^2*(Near(Src)-1)) , Estreamx(:,Src) )=0;
+end
+for Targ=1:
     kernel_yB( bsxfun(@plus, Erange, Np^2*(Near(Src)-1)) ,Src )=0;
 end
 %% Misc init

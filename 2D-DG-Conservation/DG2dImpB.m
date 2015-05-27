@@ -9,7 +9,7 @@ close all
 clear all
 clc
 
-tests=16;
+tests=8:2:14;
 
 for yam=1:numel(tests)
     clearvars wxt tt

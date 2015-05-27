@@ -29,7 +29,7 @@ ICfuns{end+1}=@(x,y) (1/PR^14)*(PR^2-min((x/Pa).^2+(y/Pb).^2,PR^2)).^7;
 vAfx=@(x,y) y.*( (-1./(16*(x.^2+y.^2))) .* (1-(1-min(x.^2+y.^2,1)).^8) );
 vAfy=@(x,y) -x.*( (-1./(16*(x.^2+y.^2))) .* (1-(1-min(x.^2+y.^2,1)).^8) );
     %Fun (4)
-ICfuns{end+1}=@(x,y) moll(x,y,0,0,0.31,0.31);
+ICfuns{end+1}=@(x,y) moll(x,y,0,0.5,10E16,.5);
     %Strain (5-8) patch
 S=  [-0.4515, 0.4968, -0.9643, 0.3418];
 dx= [-0.6988, 1.4363, -0.1722, -1.5009];
@@ -47,12 +47,12 @@ ICfuns{end+1}=@(x,y) 20*(1- (min( sqrt((x/Ka).^2+(y/Kb).^2),SR)/SR).^4 );
 Gb1=    2*0.07^2; 
 Gdy1=   0;
 GA1=    .2;
-ICfuns{end+1}=@(x,y) GA1*exp( -(y-Gdy1-0.2*exp(-((x/2).^2)).*sin(2*x)).^2/Gb1 );%Center is at (dx,dy)
+ICfuns{end+1}=@(x,y) GA1*exp( -(y-Gdy1-0.1*exp(-((x/2).^2)).*sin(2*x)).^2/Gb1 );%Center is at (dx,dy)
 
 Gb2=    2*0.07^2; 
 Gdy2=   -1/5;
 GA2=    -.2;
-ICfuns{end+1}=@(x,y) GA2*exp( -(y-Gdy2-0.2*exp(-((x/2).^2)).*sin(2*x)).^2/Gb2 );%Center is at (dx,dy)
+ICfuns{end+1}=@(x,y) GA2*exp( -(y-Gdy2-0.1*sin(2*x)).^2/Gb2 );%Center is at (dx,dy)
 
 %Iterate over each of the IC funs
 w=w0;
@@ -60,7 +60,4 @@ if TestCases
     for IC=TestCases
         w=w+ICfuns{IC}(wxm,wym);
     end
-else
-    load('K4_30GDpt4sg.mat')
-    w=reshape(wxt(:,:,:,end),5*30,5*30)';
 end

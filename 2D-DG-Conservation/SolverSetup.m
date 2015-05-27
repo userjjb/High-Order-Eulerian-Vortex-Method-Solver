@@ -19,8 +19,36 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 srcx=wxm(Nnumy(:,1,Estreamy(:,end) )); %Generalized source location
 srcy=wym(Nnumy(:,1,Estreamy(:,end) ));
 %Calculate generalized kernel for boundary velocity points
-gkernel_xB= (1/(4*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 4 3 2]);
-gkernel_yB= (1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 4 3 2]);
+switch KernelType
+case 'WL'
+    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_xB= (1/(2*pi))*permute(( bsxfun(@minus,srcy(:),rv_xB(1,2,:,:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 4 3 2]);
+    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_yB= (1/(2*pi))*permute(( bsxfun(@minus,rv_yB(1,1,:,:),srcx(:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 4 3 2]);
+case 'SG'
+    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_xB= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(Rsq)).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 4 3 2]);
+    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_yB= (1/(2*pi))*permute( (bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(Rsq)).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 4 3 2]);
+case 'SG6'
+    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_xB= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(Rsq)).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 4 3 2]);
+    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_yB= (1/(2*pi))*permute( (bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(Rsq)).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 4 3 2]);
+case 'PS'
+    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_xB= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(Rsq)).*(1-besselj(0,sqrt(Rsq)/del)),[1 4 3 2]);
+    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_yB= (1/(2*pi))*permute( (bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(Rsq)).*(1-besselj(0,sqrt(Rsq)/del)),[1 4 3 2]);
+case 'PS2'
+    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_xB= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(Rsq)).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 4 3 2]);
+    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_yB= (1/(2*pi))*permute( (bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(Rsq)).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 4 3 2]);
+otherwise
+    gkernel_xB= (1/(4*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 4 3 2]);
+    gkernel_yB= (1/(4*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 4 3 2]);
+end
 
 %% Near kernel and local params
 %Function for selecting nearby elements in range, local stream coords
@@ -48,8 +76,41 @@ end
 Nrv_x= reshape([t1(:),t2(:)]',1,2,[]);
 Nrv_y= reshape([t2(:),t1(:)]',1,2,[]);
 [srcx,srcy]= meshgrid(Qx*(delX/2),Qx*(delX/2));
-kernel_x= (1/(4*pi))*permute(bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 3 4 2]);
-kernel_y= (1/(4*pi))*permute(bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 3 4 2]);
+switch KernelType
+case 'WL'
+    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
+    kernel_x= (1/(2*pi))*permute(( bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 3 4 2]);
+    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
+    kernel_y= (1/(2*pi))*permute(( bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 3 4 2]);
+    clearvars Rsq
+case 'SG'
+    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
+    kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 3 4 2]);
+    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
+    kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 3 4 2]);
+    clearvars Rsq
+case 'SG6'
+    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
+    kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 3 4 2]);
+    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
+    kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 3 4 2]);
+    clearvars Rsq
+case 'PS'
+    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
+    kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1-besselj(0,sqrt(Rsq)/del)),[1 3 4 2]);
+    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
+    kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1-besselj(0,sqrt(Rsq)/del)),[1 3 4 2]);
+    clearvars Rsq
+case 'PS2'
+    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
+    kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 3 4 2]);
+    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
+    kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 3 4 2]);
+    clearvars Rsq
+otherwise
+    kernel_x= (1/(4*pi))*permute(bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 3 4 2]);
+    kernel_y= (1/(4*pi))*permute(bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2)+del^2).^(3/2),[1 3 4 2]);
+end
 clearvars t1 t2 Nrv_x Nrv_y srcx srcy Local LEnum Lstreamx Lstreamy
 %%
 

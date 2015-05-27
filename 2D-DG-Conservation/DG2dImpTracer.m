@@ -8,41 +8,38 @@
 close all
 clear all
 clc
-
-tests=16;
-
-for yam=1:numel(tests)
-    clearvars wxt tt
     
-filename=['SC6_',num2str(tests(yam)),'GDpt25ps2.mat'];
-saveQ=1;
 %---Global domain initialization (parameters)------------------------------
-B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
-K= [tests(yam) tests(yam)];               %Num elements along x,y
+B= [-5 5 -1 1];           %left, right, bottom, top
+K= [25 5];               %Num elements along x,y
 %Solver parameters
-delt= .32;                            %Timestep
+delt= 4;                            %Timestep
 N= 6;                               %Local vorticity poly order
 M= 6;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1*(48^2/prod(K))*1E-9;
-del=.25*((B(2)-B(1))/K(1));
-EndTime=28;
+w_thresh=0;%1*(48^2/prod(K))*1E-9;
+del=.35*((B(2)-B(1))/K(1));
+EndTime=1000;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
 KernelType='PS2';
-NearRange=ceil(K(1)/3);
-TestCases=5:8;
+NearRange=7;
+TestCases=10;
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-PlotInt=[-[.831,.696,.563,.43,.3,.168,.032],0.099,.227,.364];
+PlotInt=[-.198:.02:.198];
 
 %Calculate all derived solver parameters (node/boundary/element positions
 %and numbering, discrete norm, and pre-allocate vorticity/velocity vars
 run('CalcedParams')
 %Setup initial conditions at t_0
+C=InitialTracer(w,4,wxm,wym);
 w=InitialConditions(w,TestCases,wxm,wym);
 
 %Solver--------------------------------------------------------------------
 run('SolverSetup')
+Cx=   reshape(C',Np,1,[]);
+Cy=   reshape(C,Np,1,[]); 
+Ck2= zeros(size(Cx));
 tic
 for t=0:delt:EndTime
     if mod(StepNum,LogPeriod)==0
@@ -94,6 +91,11 @@ for t=0:delt:EndTime
         w_bx= mtimesx(Ll',wy);          %Bottom interpolated vorticity
         w_tx= mtimesx(Lr',wy);          %Top interpolated vorticity
         
+        C_lx= mtimesx(Ll',Cx);          %Left interpolated tracer
+        C_rx= mtimesx(Lr',Cx);          
+        C_bx= mtimesx(Ll',Cy);          
+        C_tx= mtimesx(Lr',Cy);          
+        
         %Boundary fluxes
         if BCtype== 'NoInflow'
             v_xBC= v_xB; v_xBC(:,1)= min(v_xBC(:,1),0); v_xBC(:,end)= max(v_xBC(:,end),0);
@@ -104,23 +106,41 @@ for t=0:delt:EndTime
         fb= abs( v_yBC(EBb) ).*( w_tx(y_km1).*(sign(v_yB(EBb))+alpha) + w_bx.*(sign(v_yB(EBb))-alpha) );
         ft= abs( v_yBC(EBt) ).*( w_tx.*(sign(v_yB(EBt))+alpha) + w_bx(y_kp1).*(sign(v_yB(EBt))-alpha) );
         
+        Cfl= abs( v_xBC(EBl) ).*( C_rx(x_km1).*(sign(v_xB(EBl))+alpha) + C_lx.*(sign(v_xB(EBl))-alpha) );
+        Cfr= abs( v_xBC(EBr) ).*( C_rx.*(sign(v_xB(EBr))+alpha) + C_lx(x_kp1).*(sign(v_xB(EBr))-alpha) );
+        Cfb= abs( v_yBC(EBb) ).*( C_tx(y_km1).*(sign(v_yB(EBb))+alpha) + C_bx.*(sign(v_yB(EBb))-alpha) );
+        Cft= abs( v_yBC(EBt) ).*( C_tx.*(sign(v_yB(EBt))+alpha) + C_bx(y_kp1).*(sign(v_yB(EBt))-alpha) );
+        
         %Nodal total surface flux
         SurfFlux_x=bsxfun(@times,fr,LrM)-bsxfun(@times,fl,LlM);
         SurfFlux_y=bsxfun(@times,ft,LrM)-bsxfun(@times,fb,LlM);
+        
+        CSurfFlux_x=bsxfun(@times,Cfr,LrM)-bsxfun(@times,Cfl,LlM);
+        CSurfFlux_y=bsxfun(@times,Cft,LrM)-bsxfun(@times,Cfb,LlM);
         %Nodal stiffness eval
         Stiff_x= mtimesx(v_xBF,mtimesx(QwSMlow,wx));
         Stiff_x= Stiff_x + mtimesx(v_xE,mtimesx(QwSM,wx));
         Stiff_y= mtimesx(v_yBF,mtimesx(QwSMlow,wy));
         Stiff_y= Stiff_y + mtimesx(v_yE,mtimesx(QwSM,wy));
+        
+        CStiff_x= mtimesx(v_xBF,mtimesx(QwSMlow,Cx));
+        CStiff_x= CStiff_x + mtimesx(v_xE,mtimesx(QwSM,Cx));
+        CStiff_y= mtimesx(v_yBF,mtimesx(QwSMlow,Cy));
+        CStiff_y= CStiff_y + mtimesx(v_yE,mtimesx(QwSM,Cy));
 
         wx_dt= permute(Stiff_x-SurfFlux_x,[4 1 3 2]); %Reshape to match wx
         wy_dt= reshape(reshape(Stiff_y-SurfFlux_y,K(2),[])',Np,1,[]); %Reshape to match wx
         
+        Cx_dt= permute(CStiff_x-CSurfFlux_x,[4 1 3 2]); %Reshape to match wx
+        Cy_dt= reshape(reshape(CStiff_y-CSurfFlux_y,K(2),[])',Np,1,[]); %Reshape to match wx
+        
         k2= RKa(i)*k2 + delt*(wx_dt+wy_dt);
         wx= wx+RKb(i)*k2;
         wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
+        
+        Ck2= RKa(i)*Ck2 + delt*(Cx_dt+Cy_dt);
+        Cx= Cx+RKb(i)*Ck2;
+        Cy= reshape(reshape(Cx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
     end
 end
 setup(end+1)=toc
-if saveQ; save(filename,'wxt','setup'); end
-end

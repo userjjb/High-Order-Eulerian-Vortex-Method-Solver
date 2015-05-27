@@ -56,8 +56,8 @@ for t=0:delt:EndTime
         v_xI= reshape(mtimesx(w_elemPre(:,:,mask), kernel_x),1,Mp-1,Np*(2*NearRange+1)^2,[]);
         v_yI= reshape(mtimesx(w_elemPre(:,:,mask), kernel_y),1,Mp-1,Np*(2*NearRange+1)^2,[]);
         %Calculate boundary velocities
-        v_xB= mtimesx(w_elemPre(:),'T',kernel_xB);
-        v_yB= mtimesx(w_elemPre(:),'T',kernel_yB);
+        v_xB= reshape(mtimesx(w_elemPre(:),'T',kernel_xB) ,K(1)+1,Np*K(2))';
+        v_yB= reshape(mtimesx(w_elemPre(:),'T',kernel_yB) ,K(2)+1,Np*K(1));
         v_xBF= [v_xB(EBl),v_xB(EBr)];
         v_yBF= [v_yB(EBb),v_yB(EBt)];
         for it=1:length(mask)

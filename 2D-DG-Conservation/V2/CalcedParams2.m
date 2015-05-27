@@ -25,10 +25,6 @@ w= zeros(Np*K(2),Np*K(1));          %Global vorticity at element interp points
 %velocity evals.
 v_xE=zeros(1,Mp,K(1)*Np*K(2));
 v_yE=zeros(1,Mp,K(2)*Np*K(1));
-v_xB=zeros(Np*K(2),K(1)+1);
-v_yB=zeros(K(2)+1,Np*K(1));
-v_xBF=zeros(1,2,Np*K(2)*K(1));
-v_yBF=zeros(1,2,Np*K(1)*K(2));
 
 %---Node numbering---------------------------------------------------------
 %Element numbering

@@ -9,25 +9,31 @@ close all
 clear all
 clc
 
-%Should match G309 best, compare against P301
-filename='RESET.mat';
+tests=2:2:4;
+
+for yam=1:numel(tests)
+    clearvars wxt tt
+    
+filename=['K4_',num2str(tests(yam)),'GDpt4sg.mat'];
 saveQ=1;
+%---Global domain initialization (parameters)------------------------------
+B= 2.6*[-1 1 -1 1];           %left, right, bottom, top
+K= [tests(yam) tests(yam)];               %Num elements along x,y
 %Solver parameters
-alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-N= 6;                               %Local vorticity poly order
-M= 6;                               %Local velocity poly order
+delt= 1/48;                            %Timestep
+N= 4;                               %Local vorticity poly order
+M= 4;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1E-9;
-del=0.5*(7.875/20);
-delt= 1*.32;
-EndTime=100;
+w_thresh=50*(48^2/prod(K))*1E-9;
+del=.4*((B(2)-B(1))/K(1));
+EndTime=4.5;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
-NearRange=16;
-TestCases=5:8;
-%---Global domain initialization (parameters)------------------------------
-B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
-K= [48 48];               %Num elements along x,y
+KernelType='SG';
+NearRange=ceil(K(1)/3);
+TestCases=9;
+alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
+PlotInt=[.25,.5,[1:20]];
 
 %Calculate all derived solver parameters (node/boundary/element positions
 %and numbering, discrete norm, and pre-allocate vorticity/velocity vars
@@ -41,15 +47,14 @@ tic
 for t=0:delt:EndTime
     if mod(StepNum,LogPeriod)==0
         run('PlotNSave')
-    end
-    StepNum= StepNum+1;
+    end; StepNum= StepNum+1;
     
-  
+         
     
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
-        
- %---Velocity eval of current timestep's vorticity config-----------
+
+    %---Velocity eval of current timestep's vorticity config-----------
     v_xB(:)=0; v_yB(:)=0; v_xBF(:)=0; v_yBF(:)=0; v_xE(:)=0; v_yE(:)=0;
     w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
     w_tot=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
@@ -82,7 +87,7 @@ for t=0:delt:EndTime
         v_yE(1,:,NsyS)= v_yE(1,:,NsyS)+ [v_yBt(EBb(NsyS)), v_yI(1,:,Lsy(1:numS(Src),Src),it) ,v_yBt(EBt(NsyS))];
     end
     %---Velocity eval ends---------------------------------------------
-        
+    
         %---Advection------------------------------------------------------
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity
         w_rx= mtimesx(Lr',wx);          %Right interpolated vorticity
@@ -116,4 +121,6 @@ for t=0:delt:EndTime
         wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
     end
 end
+setup(end+1)=toc
 if saveQ; save(filename,'wxt','setup'); end
+end

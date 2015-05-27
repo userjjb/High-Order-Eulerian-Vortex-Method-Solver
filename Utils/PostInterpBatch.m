@@ -1,7 +1,17 @@
 clear all
 clc
+set(0, 'DefaulttextInterpreter', 'none');
 
-load('9_36GD.mat')
+it=1;
+tests=8:2:16;
+for i=tests;
+    data{it}=num2str(i);
+    it=it+1;
+end
+post='GDpt25ps2';
+pre= 'SC6_';
+
+load('SC6_36GDsg.mat')
 N=setup(2); M=setup(3); del=setup(4); deltE=setup(5); K=setup(7:8); B=setup(9:12);
 run('CalcedParams'); NpE=Np; QxE=Qx; KE=K(1); delXE=delX;
 wxE=permute(reshape(permute(wxt(:,1,Estreamx,:),[1 3 2 4]),Np,Np,K(2),K(1),[]),[2 1 3 4 5]);
@@ -13,7 +23,8 @@ LagE= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nnE(nv,:,:)),bsxfun(@minus,nd
 interp_g=@(x,y,G) LagE(x,1:Np)'*(G*LagE(y,1:Np));
 %--------
 
-load('6-2_12GD.mat')
+for runs=1:length(data)
+load([pre,data{runs},post,'.mat'])
 N=setup(2); M=setup(3); del=setup(4); deltA=setup(5); K=setup(7:8); B=setup(9:12);
 run('CalcedParams'); NpA=Np; QxA=Qx; KA=K(1); delXA=delX;
 wxA=permute(reshape(permute(wxt(:,1,Estreamx,:),[1 3 2 4]),Np,Np,K(2),K(1),[]),[2 1 3 4 5]);
@@ -38,8 +49,8 @@ LyE= LagE(IpE,1:NpE);
 LxA= LagA(IpA,1:NpA)';
 LyA= LagA(IpA,1:NpA);
 
-freqE= lcm(deltA*100,deltE*100)/(deltE*100);
-freqA= lcm(deltA*100,deltE*100)/(deltA*100);
+freqE= lcm(deltA*1000,deltE*1000)/(deltE*1000);
+freqA= lcm(deltA*1000,deltE*1000)/(deltA*1000);
 tratio= freqA/freqE;
 endtE=size(wxE,5);
 endtA=size(wxA,5);
@@ -47,18 +58,43 @@ endtA=size(wxA,5);
 h=waitbar(0);
 it=1;
 tic
+%wxIA= permute(mtimesx(LxA, mtimesx( wxA(:,:,:,:,end-8),LyA )),[1 3 2 4]);
 for t=1:freqE:endtE
-    wxIA= permute(mtimesx(LxA, mtimesx( wxA(:,:,:,:,1+(t-1)*tratio),LyA )),[1 3 2 4]);
+    tA=1+(t-1)*tratio; if tA>endtA break; end
+    wxIA= permute(mtimesx(LxA, mtimesx( wxA(:,:,:,:,tA),LyA )),[1 3 2 4]);
     wxIE= permute(mtimesx(LxE, mtimesx( wxE(:,:,:,:,t),LyE )),[1 3 2 4]);
 
-    L2(it)= sqrt((delXE/IdE)^2*sum((wxIE(:)-wxIA(:)).^2));
-    tt(it)= deltE*(t-1);
-    waitbar(t/endtE,h,sprintf('Estimated time: %i',floor((endtE-t)*toc/t)))
+    L2(runs,it)= sqrt(((delXE/(B(1)-B(2)))/IdE)^2*sum((wxIE(:)-wxIA(:)).^2));
+    %L1(runs,it)= (((delXE/(B(1)-B(2)))/IdE)^2*sum(abs(wxIE(:)-wxIA(:))));
+    tt(runs,it)= deltE*(t-1);
+    waitbar(t/endtE,h,sprintf('%s: %i',[pre,data{runs},post],floor((endtE-t)*toc/t)))
     it= it+1;
 end
+
+end
 close(h)
-plot(tt,L2,'r')
+
+rvals= linspace(0,1,length(data));
+gvals= linspace(1,0,length(data));
+bvals= 0.5*mod((1:length(data))-1,2);
+figure(1)
 hold on
+for runs= 1:length(data)
+    hp(runs)= plot(tt(runs,:),L2(runs,:),'Color',[rvals(runs), gvals(runs),bvals(runs)]);
+end
+hl=legend(hp,data,'Location','northwest');
+set(hl, 'Interpreter', 'none')
+
+set(0, 'DefaulttextInterpreter', 'tex');
+
+figure(2)
+hold on
+for i=1:size(L2,2)
+    C2(i,:)=polyfit(log(tests),log(L2(:,i))',1);
+    %C1(i,:)=polyfit(log(tests),log(L1(:,i))',1);
+end
+plot(tt(1,:),C2(:,1))
+%plot(tt(1,:),C1(:,1),'r')
 
 % endt=1+round((size(wxE,5)-1)/5);
 % tic
