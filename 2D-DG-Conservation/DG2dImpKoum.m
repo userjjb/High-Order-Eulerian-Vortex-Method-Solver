@@ -14,7 +14,7 @@ tests=48;
 for yam=1:numel(tests)
     clearvars wxt tt
     
-filename=['K4_',num2str(tests(yam)),'GDpt8ps2B.mat'];
+filename=['K4_',num2str(tests(yam)),'GDpt8ps2J2.mat'];
 saveQ=1;
 %---Global domain initialization (parameters)------------------------------
 B= 2.6*[-1 1 -1 1];           %left, right, bottom, top
