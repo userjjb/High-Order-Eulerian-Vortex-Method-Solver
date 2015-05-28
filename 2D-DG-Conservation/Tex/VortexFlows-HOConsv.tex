@@ -143,7 +143,7 @@ There are numerous methods to reduce the computational complexity of similar N-b
 The second point to consider regarding the Biot-Savart integral is the singular nature of the exact kernel. Lagrangian point vortex methods have the benefit that the singularity and it's associated non-physical velocities occur in a relatively small region; they assume that the advective effect of the point vortex on itself is negligible. Generally, self-influence merely results in solid body rotation. This is the approach taken by early methods \cite{Point1}. While easy to implement, it results in un-physically large velocities when two point vortices approach near each other. The other issue with this approach is poor convergence and accuracy on the resulting velocity field off particle paths as described by Beale and Majda \cite{BealeMajda}.
 
 One may attempt to tame the singularity  by introducing a core function $\eta(^z/_{\delta})$. Heuristically, the point vortex is now replaced by a finite size vortex blob described by $\eta(r)$, with characteristic radius $\delta$. Analytically, the point vortex is essentially a delta function; core functions are desingularized approximations that converge to the delta function as $\delta \rightarrow 0$. Traditionally the core function is convolved with the Biot-Savart kernel to yield a desingularized kernel $K_{\delta}$.
-\be K*\eta(r) = K_{\delta} \ee
+\ben{DesingBS} K*\eta(r) = K_{\delta} \ee
 
 The choice of a core function and a characteristic radius has important implications on the accuracy and convergence of a Lagrangian point vortex method. Choosing a cutoff radius too small and there is insufficient smoothing, too large and the vorticity discretization is spatially smeared. The choice of a core function is also nuanced: good approximations of the delta function should preserve both the volume and moments of the delta function \cite{BealeMajda}.
 
@@ -212,7 +212,7 @@ We have purposely left the flux in the second integral unevaluated in terms of t
 %------------------------------------
 \chapter{Methodology}
 Solver specific implementation details are deferred until the next chapter while we develop method specific choices and numerical machinery. However it is instructive to briefly outline the programmatic flow of the solver.
-\section{Preliminary Solver Overview}
+\section{Preliminary Solver Overview}\label{Pseudo1}
 \vspace{-1cm}
 \singlespacing
 \begin{lstlisting}[language=Matlab]
@@ -259,7 +259,7 @@ where, M is the order of the basis and the set of points ${x_p}$ are the $M+1$ i
 \be f(x) \approx \sum_{i=0}^M z_i \ell_i(x) \ee
 
 %
-\section{Interpolation Node Choice}
+\section{Interpolation Node Choice}\label{INC}
 It is well known that for moderate orders equispaced interpolation nodes are a poor choice that will suffer from Runge's Phenomenon. The common solution is to use nodes that are the roots of an orthogonal polynomial family; Chebyshev, Legendre, and Legendre-Lobatto are all common choices \cite{Roni}. 
 
 At first one may be tempted to choose the Lobatto points as they include nodes on the extremes of the domain, which are needed for the boundary flux evaluation. There is a minor problem with this however. We would ideally like to collocate our quadrature nodes with our interpolation points, so that they can be reused for any numerical integration. However a Gauss-Lobatto quadrature rule is $2N-1$ order accurate \cite{Roni}. This means if we have the product of two $N$th order polynomials that share the same nodes, a collocated Lobatto quadrature rule is not exact. While this is not outright impermissible, there is another point to consider.
@@ -315,7 +315,7 @@ To retain the full order of each quantity, as well as suffer no quadrature error
 \end{split}\ee
 We will do this in the next section.
 %
-\section{Modified Quadrature}
+\section{Modified Quadrature}\label{ModQuad}
 To retain full interpolatory order of both the velocity and vorticity in the stiffness integral we seek a set of quadrature weights derived from
 \be \sum_i^M u_i \sum_k^M \omega_k \;w_{unknown} = \sum_i^M u_i \sum_k^M \omega_k \int \ell_i(x) \ell_k(x) \ell_j'(x) \;dx \ee
 note that we might alternatively wish to find something that looks more like the Gauss-Legendre quadrature rule
@@ -370,50 +370,129 @@ Order M+N & IoP       & PoI      & Quad. Error & Discretiz. Error &  Order M  \\
 
 %------------------------------------
 \chapter{Implementation}
+To provide a clear picture of the overarching structure of the solver we restate the overview of \S\ref{Pseudo1}, but now add in specific solver subroutines and more specific details on the required steps.
 \section{Overall Solver Structure}
-It is worth briefly mentioning the overall structure of the solver, as it motivates some of the machinery developed and provides a useful overview of the detailed portions of the following sections. The preamble contains various solver configuration parameters and initializes most of the persistent data objects. It also initializes quadrature information which in turn is used to initialize the quadrature weight matrices needed for the order of the vorticity and velocity. The quadrature matrix is modified in place to incorporate the Jacobian as well as the inverse Mass matrix entry so that these do not needed to be multiplied by after the fact.
+\vspace{-1cm}
+\singlespacing
+\begin{lstlisting}
+Define problem parameters [domain size, initial condition type]
+Define solver parameters [order velocity/vorticity, element size,
+   time stepping choice, time step, cutoff radius, minimum
+   vorticity threshold, kernel type]
+Calculate derived solver parameters
+   -interpolation nodes/weights
+   -modified quadrature matrix
+   -node numbering/associativity
+   -node coordinates
+Setup intitial conditions
+Initialize solver
+   -vorticity interpolation vectors
+   -calculate generalized boundary kernel
+   -calculate nearby elemental kernel values
+   -calculate quadrature weight outer product for later
+      use in pre-multiplication for vorticity integration
 
-Most data is stored in one of two different formats, either a column-major form that matches Matlab's memory layout to optimize indexing performance, or a "line-wise" format. The line-wise terminology shouldn't be confused with any physical phenomenon, rather it relates to the tensor composition of the code. As the $x$ and $y$ direction problems are largely decoupled, each is treated independently, with a "line" being a particular 1D basis along the coordinate direction. Adjacent lines are parallel 1D basis functions that share a boundary node. For an example layout of $x$ and $y$ lines see Figure~\ref{fig:streams}.
+for t=0 to end
+   if Log?=yes
+      save system state to file and plot
+   end
+
+   for s=1 to last_stage (NRK14C method)
+      Calculate elemental vorticity sums and create mask of
+         those greater than threshold
+      Pre-multiply vorticity with quad. weight outer product
+      
+      Calculate un-assigned nearby elemental velocities for
+         vorticity source>threshold
+      for each vorticity source>threshold
+         -Assemble global kernel of boundary values from 
+            generalized kernel
+         -Calculate global boundary velocities (for surface
+            flux use)
+         -Correct global boundary values to generate element
+            boundary values from far field sources (for
+            far field stiffness use)
+         -Assign nearby elemental velocities to specific
+            element, merge with corrected element boundary
+            values for near field sources (for near field
+            stiffness use)
+      end
+
+      interpolate boundary_vorticity
+      calculate numerical_fluxes
+      calculate total_surface_flux
+      calculate internal_stiffness_flux
+		
+      vorticity_rate_of_change=...
+         internal_stiffness_flux - total_surface_flux
+		
+      RK_stage= (RK_coeff_a*RK_stage) +...
+         (time_step * vorticity_rate_of_change)
+      vorticity= vorticity + RK_coeff_b * RK_stage
+   end
+end
+\end{lstlisting}
+\doublespacing
+
+We briefly elaborate on the main parts of the implementation, the sections following give full detail for each major part.
+
+We will use terminology commonly used in Finite Element Methods to refer to specific pieces of the 1D PDE solved along each line from Eqn.\eqref{DGJoshTemp}; the integral involved in the time derivative generates the \textit{mass} matrix.
+\be \boldsymbol{M} = \frac{\Delta x}{2} \sum_{i=0}^M \left[ \frac{d z_{ij}}{dt}	\int_{-1}^{1}\ell_i  \, \ell_j \;dX \right] \ee
+The integral involved in the spatial derivative of the weighting function generates the \textit{stiffness} matrix.
+\be \boldsymbol{K} = \int_{-1}^{1} f(\aomega) \, \ell_j' \;dX \ee
+The total surface flux is the net flow across element bounds into a particular line. It is calculated from the numerical flux and the weighting basis evaluated at the line boundaries.
+\be \boldsymbol{F} = \hat{f}\ell_j \Big|^{x_R}_{x_L} \ee
+
+The preamble contains various solver configuration parameters and initializes most of the persistent data objects. It also initializes quadrature information which in turn is used to initialize the quadrature weight matrices needed for the order of the vorticity and velocity as was described in \S\ref{ModQuad}.
+
+The mass matrix will be shown to be diagonalizable in \S\ref{MassM} allowing it to be decoupled from the time derivative. This allows the quadrature matrix to be multiplied in place to incorporate the Jacobian as well as the inverse Mass matrix entry so that these do not needed to be multiplied by after the fact. 
+
+The next part of the solver creates element-line-boundary-node associativity. These are used to freely select the appropriate sections of data associated with a particular hierarchy. Most of these are simply a column-wise index list, some are specifically shaped so that the returned data from the index selection is the correct shape for reuse (ND matrix etc). This is also where the coordinates of the vorticity nodes, velocity boundary nodes, and velocity internal element nodes are specified. This is more full described in \S\ref{NodeNum}.
+
+Next, a cell list of functions that specify the initial conditions of the system. The resultant initial condition is the linear superposition of all the selected generating functions. The interpolation vectors for the surface flux are constructed, again incorporating the Jacobian and inverse mass entry like in the quadrature weight matrix to avoid element-wise multiplications later. Finally the "generalized" and "nearby" kernel evaluation matrices are constructed for later re-use as described in \S\ref{VelEval}.
+
+At this point the remainder of the code occurs inside the main time marching loop. A fourth-order, 14 stage, explicit Runge-Kutta routine is used with an inner loop used for stage-stepping. Depending on the solver setup, the velocity evaluation code is either executed every time step, or every stage as described in \S\ref{TimeStep}. The sum of the vorticity in each element is computed and those above a threshold are added to element-wise and line-wise masks. Each element in the mask is treated as a source of vorticity and the velocity from that element is added to the current running total for the global velocity. Total element and element boundary velocities are formed for later use in the semi-discrete system.
+
+The DG advection code always occurs within the RK stage loop. Vorticity is extrapolated at the element boundary. Boundary conditions are applied and the element boundary fluxes are evaluated. The stiffness term is evaluated for the current stage's vorticity and velocity configuration (\S\ref{StiffM}). At this point the semi-discrete system is complete and the stage's rate of change for all nodes is computed for each direction and the two are added together. The new vorticity is computed for the stage and both the time-stepping and stage-stepping loops wrap.
+
+There is also some additional post-processing type routines that run that save simulation data for later use, and can also update in realtime displaying current simulation diagnostics ($L^2$ norm, vorticity conservation etc.).
+
+%
+\section{Structured Tensor Mesh}\label{NodeNum}
+The test cases that are considered in this thesis are all free of impinging geometry and have no bias known \textit{a priori}, as such a constant-size structured mesh comprised of squares is used. It is worth noting that this is by no means required, an un-structured mesh is easily treated via a mapping to a canonical computational element \cite{Persson2013}. The structured mesh merely affords ease of implementation, as well as simplification of element-line-boundary-node indexing.
+
+Most data is stored in one of two different formats, either a column-major form that matches Matlab's memory layout to optimize indexing performance, or a "line-wise" format. The line-wise format groups nodes along the coordinate directions. Adjacent lines are parallel 1D basis functions that share a boundary node. Lines are numbered left to right, bottom to top for $x$-lines and bottom to top, left to right for $y$-streams. Both direction's lines are numbered separately. For an example layout of $x$ and $y$ lines see Figure~\ref{fig:streams}. This shows only the upper left chunk of a 5x4 global domain. The lowest two $y$-lines shown aren't sequential because one needs to continue counting in the $y$ direction from 1, there are 3 more elements with the left most $y$-line in each numbered '2,3,4' sequentially. Once we reach the top of the global domain the numbering wraps back around to the bottom, second leftmost $y$-stream: '5'.
+
 \begin{figure}
 \centering
 \includegraphics[width=5.5in]{streams.PNG}
-\caption{\label{fig:streams}"Line-wise" numbering for elements 1, 5, and 9 in a 4x5 element global domain.}
+\caption{\label{fig:streams}"Line-wise" numbering for elements 1, 5, and 9 in a 5x4 element global domain.}
 \end{figure}
-The next section of the solver creates element-line-boundary-node associativity. These are used to freely select the appropriate sections of data associated with a particular hierarchy. Most of these are simply a column-wise index list, some are specifically shaped so that the returned data from the index selection is the correct shape for reuse (ND matrix etc). This is also where the coordinates of the vorticity nodes, velocity boundary nodes, and velocity internal element nodes are specified. 
 
-The next section consists of a cell list of functions that specify the initial conditions of the system. The resultant initial condition is the linear superposition of all the selected generating functions. The interpolation vectors for the surface flux are constructed, again incorporating the Jacobian and inverse matrix entry like in the quadrature weight matrix to avoid element-wise multiplications later. Finally the "global" kernel evaluation matrices are constructed for later re-use (these will be described in greater detail in a following section).
-
-At this point the remainder of the code occurs inside the main time marching loop. An explicit Runge-Kutta routine is used with an inner loop used for stage-stepping. Depending on the solver setup, the velocity evaluation code is either executed every time step, or every stage. The sum of the vorticity in each element is computed and those above a threshold are added to element-wise and line-wise masks. Each element in the mask is treated as a source of vorticity and the velocity from that element is added to the current running total for the global velocity. Total element and element boundary velocities are formed for later use in the semi-discrete system.
-
-The DG advection code always occurs within the RK stage loop. Vorticity is extrapolated at the element boundary. Boundary conditions are applied and the element boundary fluxes are evaluated. The stiffness term is evaluated for the current stage's vorticity and velocity configuration. At this point the semi-discrete system is complete and the stage's rate of change for all nodes is computed for each direction and the two are added together. The new vorticity is computed for the stage and both the time-stepping and stage-stepping loops wrap.
-
-There is also some additional post-processing type routines that run that save simulation data for later use, and can also update in realtime displaying current simulation health statistics ($L^2$ norm etc.).
 %
-\section{Mass Matrix}
-As discussed in the Interpolation Node Choice section, the set of Legendre roots for the vorticity interpolation points results in
+\section{Boundary Conditions}
+Boundary conditions are typically handled automatically. The global domain of the model is sized so that no vorticity is advected past the boundary. Should vorticity still manage to pass the boundary it will be lost thanks to a 'NoInflow' condition; this is imposed by enforcing all surface flux along the domain boundary to be 0. Any vorticity that does reach the boundary is destroyed.
+
+A set of periodic boundary conditions were also created that permit study of toroidal or infinite cylinder domains that may be useful in the study of semi-infinite phenomena such as the Kelvin-Helmholtz instability on a infinite line of vorticity.
+
+%
+\section{Mass Matrix}\label{MassM}
+As discussed in \S\ref{INC}, the set of Legendre roots for the vorticity interpolation points results in
 \be \int \ell_i(x) \ell_j(x) dx = \delta_{ij} w_j \ee
-This proves particular useful for the mass term, meaning the choice of Legendre nodes for interpolation results in a diagonal mass matrix that is trivially invertible. \eqref{DGJoshTemp} is then simplified to
+This proves particular useful for the mass term, meaning the choice of Legendre nodes for interpolation results in a diagonal mass matrix that is trivially invertible. Eqn. \eqref{DGJoshTemp} is then simplified to
 \ben{DGJoshTemp2} \frac{d \aomega_j}{dt} \frac{w_j \Delta x}{2}
 +\hat{f}\ell_j \Big|^{x_R}_{x_L} 
 - \int_{-1}^{1} f(\aomega) \, \ell_j' \;dX = 0 \ee
 
 One could instead choose the set of Lobatto points to avoid extrapolating the vorticity at the element boundaries, but this would result in a full mass matrix that when inverted necessitates a matrix-vector product which is about as computationally expensive as extrapolating the boundary vorticity.
-%
-\section{Usefulness of Structured Tensor Mesh}
-The test cases that are considered in this thesis are all free of impinging geometry and have no bias known a priori, as such a constant-size structured mesh comprised of squares is used. It is worth noting that this is by no means required, an un-structured mesh is easily treated via a mapping to a canonical computational element \cite{Persson2013}. The structured mesh merely affords ease of implementation, as well as simplification of element-line-boundary-node indexing.
 
-Likewise, the tensor product basis used for the vorticity can be exploited for computational and ease-of-implementation gains. The tensor product means that the 2D integral of the vorticity times the Biot-Savart kernel can be reduced by a matrix-vector and vector-vector product by pre-multiplying the vorticity of a source by the outer product of the Gauss-Legendre weights component-wise, which is then reused for each kernel-vorticity integration.
-\be \int \omega \times K \;dx \approx \boldsymbol{w}^T(\boldsymbol{\omega}_E.*\boldsymbol{K}) \boldsymbol{w} \rightarrow (\boldsymbol{ww}^T.*\boldsymbol{\omega})\boldsymbol{K} \ee
-where ".*" indicates element-wise multiplication per Matlab convention. It's worth noting that the pre-multiplied product and the kernel are reshaped to be row and column vectors respectively. If there are many kernels to be integrated for a particular vorticity source the computational savings are appreciable.
 %
-\section{Stiffness Matrix}
+\section{Stiffness Matrix}\label{StiffM}
 We can apply the results for the modified quadrature rule from \eqref{modQuad} to the purpose of evaluating the stiffness integral we have left unevaluated thus far. Recall that for maximum flexibility the velocity interpolation order is independent of the vorticity order. In addition the Lobatto points are chosen for the velocity to reuse the boundary velocities. At first glance it might seem actually counter productive to choose a different order or set of nodes for the velocity. To avoid needing "off-line" interpolation the velocity nodes should be co-linear with the vorticity lines. The result for a 5th order velocity and vorticity field is shown in Figure~\ref{fig:VelocityLobatto}.
 
-It would appear we actually need double the velocity evaluation points! How could this be a savings over collocated velocity points? The non-square tensor product of the Lobatto nodes with the Legendre nodes means that the $x$-line velocity nodes will never coincide with the $y$-line velocity nodes.
+It would appear we actually need double the velocity evaluation points. The non-square tensor product of the Lobatto nodes with the Legendre nodes means that the $x$-line velocity nodes will never coincide with the $y$-line velocity nodes. The answer is that the velocity is evaluated component-wise. Along the $x$-line we only require $u_x$ and along the $y$-line we only require $u_y$. The different direction's line's nodes may not coincide with each other, however this doesn't pose any problems as we do not need need the other velocity component at any particular velocity node. A small caveat is that if we would like to calculate the full velocity field this must be added in as an additional post-processing step to calculate the skipped velocity components.
 
-The answer is that the velocity is evaluated component-wise. Along the $x$-line we only require $u_x$ and along the $y$-line we only require $u_y$. We do not need need the other velocity component at any particular velocity node, so though they may not coincide we don not miss out on any opportunities. The trade-off is that the velocity field is perhaps a bit harder to post-process, but if the result cuts in half the expected runtime of the most expensive portion of the method it seems a fair trade-off.
-
-We can now happily apply the modified quadrature matrix to our elemental PDE
+We can now apply the modified quadrature matrix to our elemental PDE
 \ben{DGJoshTemp3} \frac{d \aomega_j}{dt} \frac{w_j \Delta x}{2}
 +\hat{f}\ell_j \Big|^{x_R}_{x_L} 
 - \mathbf{u}^T \mathbf{W}_{--j} \, \boldsymbol{\omega} = 0 \ee
@@ -429,20 +508,47 @@ This nodal equation now describes the line's contribution to the time evolution 
 \end{figure}
 
 %
-\section{Vortex Sparseness}
-One of the advantages of DG as an advection scheme is the compact local support of the vorticity. This means that for a large domain with only sparse vorticity one should be able to only consider those elements that contain vorticity. The sparseness can be applied in several ways. From the DG perspective, if an element is empty than there is nothing to advect and the element can be left out of evaluation entirely. The reality is that even small numerical errors in the boundary flux may lead to non-physical perturbations in the vorticity field in what should be otherwise empty elements. These elements can now now not be ignored, lest some instability result from not properly handling non-zero elements.
+\section{Velocity Evaluation}\label{VelEval}
+It is important to note that direct pair-pair velocity evaluation has $\mathcal{O}(N^2)$ complexity; it is well known that methods exist that can reduce this to $\mathcal{O}(N\text{log}N)$ or even $\mathcal{O}(N)$ \cite{SchumannSweet1976,LindsayKrasny2001,BarnesHut1986,GreengardRokhlin1987}. However for ease of implementation and to eliminate the effects of as much approximation error as possible on validation, the velocity is evaluated directly at each desired velocity point by means of the desingularized Biot-Savart integral (Eqn. \ref{DesingBS}). 
 
-The reality is of course from a vorticity-velocity perspective these elements are unimportant, even if they are important from a consistency standpoint for the DG part of the code. Therefore a threshold value can be specified, elements with total vorticity less that the threshold value are ignored, and only those elements above the threshold are put in a mask. The masked elements are the ones considered as sources for the velocity evaluation. Additionally, only the boundary velocities for these unimportant elements are calculated and a reduced velocity order stiffness term is calculated for them.
+The velocity at a particular node is calculated by summing the net effect of each masked source element. A loop steps through each source element and adds it's contribution to all velocity nodes. The Biot-Savart integral is done via a 2D tensor product Gauss-Legendre quadrature of order equal to the vorticity field with quadrature points collocated at the vorticity interpolation points. 
+\be u(x^*)= \sum_{E=1}^{N_{mask}} [w_{pre}]^TK_{\delta}(x^*-[x_E]) \ee
+\be \omega_{pre} = [\omega(x_E)].*[w_i \otimes w_j]\ee
+Some liberties have been taken with notation: items in brackets are column vectors and $.*$ indicates element-wise multiplication. $\omega_{pre}$ is the vorticity for each element in the mask pre-multiplied by the outer product of the two tensor direction's 1D quadrature weights. As a given mask element appears as a source for all velocity evaluation points, performing the multiplication by the quadrature weights and caching realizes significant savings. This technique combined with the summation of all quadrature points in a  particular source element by a vector-vector product realizes a significant speed-up: over 2000\% over the natural vector-(matrix-matrix)-vector multiplication, $[w_i]^T(\omega.*K_{\delta})[w_j]$ for the workstation used.
 
-The current state of the solver is bottlenecked by the velocity evaluation, so although some savings would be realized by maintaining true vorticity domain sparseness, the result is that it has little impact on the overall speed of the solver. The unmasked elements have only a marginal impact on the cost of the velocity evaluations. However empty elements do have one major effect on solver performance, this will be discussed in the next section.
+For the far field canonical Gauss-Legendre quadrature performs as expected, with excellent convergence. However for elements directly neighboring the source element, as well as the source element itself, the nearly singular nature of the integral poses convergence problems for the quadrature \cite{Strain1996}. As an illustrating point consider the data in Tables \ref{table:SelfBSQuad} and \ref{table:2BSQuad}. Compare the relative error for the computed velocities due to self-influence and a source element just two elements away. The difference in the relative error is approximately 5 orders of magnitude. Furthermore the observed error in the two element away case is mostly discretization error: the same integration parameters performed with a dummy kernel of $K=1$ had a relative error of 5E-10, within an order of magnitude of the actual test case.
 
-%
-\section{Velocity Evaluation}
-For ease of implementation and to eliminate the effects of as most approximation error as possible on validation, the velocity is evaluated directly at each Lobatto velocity (only the boundary nodes for the unmasked elements) by means of the Biot-Savart integral. It is important to note that has $\mathcal{O}(N^2)$ complexity, and so the runtime rapidly reaches a limit of impracticality above a limit.
+\begin{table}
+\centering
+\caption{Relative error in computed velocities for the self-influence of an element; 5th order quadrature method for a Gaussian vorticity distribution, $K_{WL}$, $\delta=0.35h$}\label{table:SelfBSQuad}
+\begin{tabular}{l|lllllll}
+       &$ LGL(x_1)$             &$ LGL(x_2)$              &$ LGL(x_3)$              &$ LGL(x_4)$             &$ LGL(x_5)$              & $LGL(x_6)$            \\ \hline
+$GL(x_1)$ & 0.0014 & 0.0028 & 0.0047  & 0.0011 & 0.00011 & 0.00012\\
+$GL(x_2)$ & 0.0012 & 0.00096 & 0.0011  & 0.0022 & 9.4e-06 & 0.00016 \\
+$GL(x_3)$ & 0.0014 & 0.0051  & 0.0024  & 0.0060 & 0.0037  & 0.00030 \\
+$GL(x_4)$ & 0.0010 & 0.0023  & 0.0018 & 0.0047 & 0.0062  & 0.00037 \\
+$GL(x_5)$& 0.0021 & 0.0021  & 0.0042  & 0.0060& 0.0081  & 0.00018 \\
+$GL(x_6) $& 0.0016 & 0.0042 & 0.00024 & 0.0067 & 0.0035  & 0.00028
+\end{tabular}
+\end{table}
 
-The velocity at a particular node is calculated by summing the net effect of each masked source element. A loop steps through each source element and adds it's contribution to all velocity nodes. The actual source-node pair evaluation is done via a regular Gauss-Legendre quadrature of order equal to the vorticity field. For the far field this performs as expected, with excellent convergence. However for elements directly neighboring the source element, as well as the source element itself, the nearly singular nature of the integral poses convergence problems for the quadrature.
+\begin{table}
+\centering
+\caption{Relative error in computed velocities for an element two elements away from the source; 5th order quadrature method for a Gaussian vorticity distribution, $K_{WL}$, $\delta=0.35h$}\label{table:2BSQuad}
+\begin{tabular}{l|lllllll}
+       &$ LGL(x_1)$             &$ LGL(x_2)$              &$ LGL(x_3)$              &$ LGL(x_4)$             &$ LGL(x_5)$              & $LGL(x_6)$            \\ \hline
+$GL(x_1)$ & 7.67E-09 & 6.79E-09 & 5.88E-09 & 1.85E-09 & 2.49E-09 & 4.38E-09 \\
+$GL(x_2)$    & 9.87E-09 & 9.28E-09 & 8.13E-09 & 2.56E-09 & 3.39E-09 & 5.91E-09 \\
+$GL(x_3)$   & 1.49E-08 & 1.51E-08 & 1.35E-08 & 4.00E-09 & 5.95E-09 & 9.95E-09 \\
+$GL(x_4)$    & 2.42E-08 & 2.79E-08 & 2.42E-08 & 6.16E-09 & 1.22E-08 & 1.91E-08 \\
+$GL(x_5)$    & 3.79E-08 & 4.58E-08 & 4.16E-08 & 8.24E-09 & 2.45E-08 & 3.55E-08 \\
+$GL(x_6)$    & 5.08E-08 & 6.38E-08 & 5.97E-08 & 9.02E-09 & 3.92E-08 & 5.40E-08
+\end{tabular}
+\end{table}
 
-This is unsurprising; the weighting function for the Legendre polynomials is simply $w_{Leg}(x)=1$. As such, the product of the kernel and the vorticity near the source element is poorly interpolated by a polynomial. Ideally one would use a weighting function of a form similar to the singular portion of the kernel to form a new orthogonal basis, but here one is limited by the tensor basis. More freedom is required in the interpolation points to provide adequate leeway to generate desirable quadrature rules. The generation of general multivariable interpolation and quadrature bases is an area of active and relatively recent effort \cite{Gasca2000,Xu2012,Gautschi2013}.
+The weighting function for the Legendre polynomials is simply $w_{Leg}(x)=1$. As such, the product of the kernel and the vorticity near the source element is poorly interpolated by a polynomial. To illustrate consider the same setup as the one used in the tabulated velocity errors comparison: plots of the true product of the vorticity and $K_{WL}$, it's matching interpolation, and the error between them are plotted in Figures \ref{fig:wKtrue},\ref{fig:wKinterp},\ref{fig:wKerror} respectively.
+
+Ideally one would use a weighting function of a form similar to the singular portion of the kernel to form a new orthogonal basis, but here one is limited by the tensor basis. More freedom is required in the interpolation points to provide adequate leeway to generate desirable quadrature rules. The generation of general multivariable interpolation and quadrature bases is an area of active and relatively recent effort \cite{Gasca2000,Xu2012,Gautschi2013}.
 
 At first one might think that the predominant bottleneck in the scaling of the velocity evaluation is simply the evaluation of the Biot-Savart integral. While this may be the case in other codes, or other workstation setups, this actually only accounts for typically less than half the cost. The majority of the cost actually results from the assembly of the kernel values. One is presented with three options: calculate a new set of kernel values for each source element, form a "global" matrix of kernel values that one maps to the particular source element under consideration, or directly calculating and storing kernel values for every source-node pair.
 
@@ -458,13 +564,26 @@ This also means otherwise "empty" elements affect performance by further fragmen
 \caption{\label{fig:GlobalKernel}The "global" kernel matrix showing (R)eference source and actual (S)ource, the upper left quadrant is the actual full domain, the selected region with respect to (R) selects the correct values of the kernel for (S).}
 \end{figure}
 
+The tensor product basis used for the vorticity can be exploited for computational and ease-of-implementation gains. The tensor product means that the 2D integral of the vorticity times the Biot-Savart kernel can be reduced by a matrix-vector and vector-vector product by pre-multiplying the vorticity of a source by the outer product of the Gauss-Legendre weights component-wise, which is then reused for each kernel-vorticity integration.
+\be \int \omega \times K \;dx \approx \boldsymbol{w}^T(\boldsymbol{\omega}_E.*\boldsymbol{K}) \boldsymbol{w} \rightarrow (\boldsymbol{ww}^T.*\boldsymbol{\omega})\boldsymbol{K} \ee
+where ".*" indicates element-wise multiplication per Matlab convention. It's worth noting that the pre-multiplied product and the kernel are reshaped to be row and column vectors respectively. If there are many kernels to be integrated for a particular vorticity source the computational savings are appreciable.
+
 %
-\section{Reduced Order Velocity (Global/Far-field)}
+\section{Vortex Sparseness}
+One of the advantages of DG as an advection scheme is the compact local support. This means that for a large domain with only sparse vorticity one should be able to only consider those elements that contain vorticity. The sparseness can be applied in several ways. From the DG perspective, if an element is empty than there is nothing to advect and the element can be omitted from the evaluation entirely. The reality is that even small numerical errors in the boundary flux may lead to non-physical perturbations in the vorticity field in what should be otherwise empty elements. These elements can no longer be ignored, lest some instability result from improperly handling non-zero elements.
+
+From a vorticity-velocity perspective elements with zero vorticity or boundary flux driven "noise" are unimportant, even if they are important from a consistency standpoint for the DG part of the code. Therefore a threshold value can be specified, elements with total vorticity less that the threshold value are ignored, and only those elements above the threshold are put in a mask. The masked elements are the ones considered as sources for the velocity evaluation. Additionally, only the boundary velocities for these unimportant elements are calculated and a reduced velocity order stiffness term is calculated for them.
+
+The current state of the solver is bottlenecked by the velocity evaluation, so although some savings would be realized by maintaining true vorticity domain sparseness, the result is that it has little impact on the overall speed of the solver. The unmasked elements have only a marginal impact on the cost of the velocity evaluations. However empty elements do have one major effect on solver performance, this will be discussed in the next section.
+
+%
+\section{Reduced Order Velocity at the Far-field}
 The flexibility permitted by the modified quadrature matrix allows a choice of velocity order independent of the vorticity order. A reduced velocity order reduces the runtime of the solver significantly, but this comes with some potentially severe drawbacks as will be shown. The reduced order velocity field is most easily applied to unmasked elements, but can also be extended to far-field elements. The stiffness integral can be broken up into low and high order pieces with self, neighboring, and nearby elements evaluated at high order, and slowly changing far-field elements at reduced velocity order.
 
 In some senses a reduced order far-field component is an analogue to the cluster-cluster interactions of a fast multipole method. The implementation of the reduced order far-field evaluations is deferred to a later extension of the code that will fully implement a FMM-like evaluation.
+
 %
-\section{Explicit Time-Stepping}
+\section{Explicit Time-Stepping}\label{TimeStep}
 With the semi-discrete system formed, one must now choose how to discretize in time. For simplicity an explicit time-stepping method will be used. The two chief categories are multi-step and multi-stage methods, typically either Adams-Bashforth or Runge-Kutta respectively. It is known that Forward Euler and AB2 are unstable for DG with an upwind flux due to it's dissipative nature. The choices permitted then are Runge-Kutta or a higher-order Adams-Bashforth.
 
 The recent thesis work of Atcheson \cite{Reid} presents an excellent overview of the optimal choice of time-stepping algorithm for a DG operator. In particular it was shown that Runge-Kutta methods outperformed AB3 and that all higher-order Adams-Bashforth schemes required far too restrictive of a time-step to satisfy the CFL condition to be efficient. Out of all the Runge-Kutta schemes considered \cite{Toulorge} one of the competitive options was the "NRK14C" scheme developed by Niegemann et al. \cite{Niegemann}. This is an optimized 4th order, 14 stage low storage scheme of similar structure to other 2N style schemes \cite{Carpenter}.
