@@ -9,12 +9,12 @@ close all
 clear all
 clc
 
-tests=16;
+tests=48;
 
 for yam=1:numel(tests)
     clearvars wxt tt
     
-filename=['SC6_',num2str(tests(yam)),'GDpt25ps2.mat'];
+filename=['SC6_',num2str(tests(yam)),'GDpt3ps.mat'];
 saveQ=1;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
@@ -25,11 +25,11 @@ N= 6;                               %Local vorticity poly order
 M= 6;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1*(48^2/prod(K))*1E-9;
-del=.25*((B(2)-B(1))/K(1));
+del=.3*((B(2)-B(1))/K(1));
 EndTime=28;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
-KernelType='PS2';
+KernelType='PS';
 NearRange=ceil(K(1)/3);
 TestCases=5:8;
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)

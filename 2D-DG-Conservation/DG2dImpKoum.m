@@ -9,29 +9,29 @@ close all
 clear all
 clc
 
-tests=2:2:4;
+tests=48;
 
 for yam=1:numel(tests)
     clearvars wxt tt
     
-filename=['K4_',num2str(tests(yam)),'GDpt4sg.mat'];
+filename=['K4_',num2str(tests(yam)),'GDpt8ps2B.mat'];
 saveQ=1;
 %---Global domain initialization (parameters)------------------------------
 B= 2.6*[-1 1 -1 1];           %left, right, bottom, top
 K= [tests(yam) tests(yam)];               %Num elements along x,y
 %Solver parameters
-delt= 1/48;                            %Timestep
+delt= 1/(48*3.5);                            %Timestep
 N= 4;                               %Local vorticity poly order
 M= 4;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=50*(48^2/prod(K))*1E-9;
-del=.4*((B(2)-B(1))/K(1));
-EndTime=4.5;
+del=.8*((B(2)-B(1))/K(1));
+EndTime=2.5;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
-KernelType='SG';
-NearRange=ceil(K(1)/3);
-TestCases=9;
+KernelType='PS2';
+NearRange=ceil(K(1)/2);
+TestCases=0;
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
 PlotInt=[.25,.5,[1:20]];
 
@@ -49,7 +49,7 @@ for t=0:delt:EndTime
         run('PlotNSave')
     end; StepNum= StepNum+1;
     
-         
+        
     
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
@@ -86,7 +86,7 @@ for t=0:delt:EndTime
         v_xE(1,:,NsxS)= v_xE(1,:,NsxS)+ [v_xBt(EBl(NsxS)), v_xI(1,:,Lsx(1:numS(Src),Src),it) ,v_xBt(EBr(NsxS))];
         v_yE(1,:,NsyS)= v_yE(1,:,NsyS)+ [v_yBt(EBb(NsyS)), v_yI(1,:,Lsy(1:numS(Src),Src),it) ,v_yBt(EBt(NsyS))];
     end
-    %---Velocity eval ends---------------------------------------------
+    %---Velocity eval ends--------------------------------------------- 
     
         %---Advection------------------------------------------------------
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity

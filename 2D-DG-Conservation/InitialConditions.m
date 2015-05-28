@@ -61,6 +61,6 @@ if TestCases
         w=w+ICfuns{IC}(wxm,wym);
     end
 else
-    load('K4_30GDpt4sg.mat')
-    w=reshape(wxt(:,:,:,end),5*30,5*30)';
+    load('K4_48GDpt8ps2.mat')
+    w=reshape(wxt(:,:,:,end),5*48,5*48)';
 end

@@ -7,6 +7,7 @@
 \usepackage[top=1in, bottom=1in, left=1.5in, right=1in]{geometry}	%Sets required thesis margins
 \usepackage[nodisplayskipstretch,doublespacing]{setspace} 		%Sets required thesis double spacing
 \usepackage{titlesec} 								%Used to easily redefine section title styles
+\usepackage{listings}								%Code formatting
 
 \newcommand{\be}{\begin{equation}}
 \newcommand{\ben}[1]{\begin{equation}\label{#1}}
@@ -81,23 +82,29 @@ The desire to resolve fine vortical structures motivates the need for a high ord
 
 Finite difference methods suffer from similar problems as FV with extended stencils, as well as not being explicitly conservative. A finite element approach is ill-suited to the hyperbolic nature of vorticity advection. Spectral methods are promising, but for sparse vorticity domains are less-efficient due to the global support of the harmonic bases. However, discontinuous Galerkin (DG) methods are a natural choice; they are conservative, able to take advantage of vorticity sparseness, are well-suited to handle advection via intelligent choice of a numerical flux function, and have bases with local/compact support.
 
-For domains free of impinging bodies a hexahedral mesh with a tensor product grid of interpolation points is convenient to implement. This permits the use of a line-DG \cite{Perlman1985} approach that considerably simplifies multi-dimensional cases by allowing reuse of 1D methods. A 2D domain will be considered to evaluate whether the method is practical, as well as to limit solution times to those that are reasonable on a workstation. This has the advantage of removing the vortex stretching term and reducing the vorticity to a scalar. The resultant partial differential equation (PDE) takes on the familiar form of a scalar conservation law.
+For domains free of impinging bodies a hexahedral mesh with a tensor product grid of interpolation points is convenient to implement. This permits the use of a line-DG \cite{Persson2013} approach that considerably simplifies multi-dimensional cases by allowing reuse of 1D methods. A 2D domain will be considered to evaluate whether the method is practical, as well as to limit solution times to those that are reasonable on a workstation. This has the advantage of removing the vortex stretching term and reducing the vorticity to a scalar. The resultant partial differential equation (PDE) takes on the familiar form of a scalar conservation law.
 
 \subsection{Velocity Field Fidelity}
 Unlike Lagrangian methods where advection is trivial, or Brown's method which is at low order, the necessary fidelity of the velocity field to maintain a particular global convergence rate that one would expect from the order of the vorticity field is not immediately obvious. The method by which one recovers the velocity field is decoupled from the advective solver, which has no a priori knowledge or assumptions about the quality of the velocity field approximation. 
 
 To maintain maximum flexibility for investigative purposes and to remove as much approximation error as possible the velocity field for validation of the underlying method is calculated via direct evaluation of the BS integral.
 
-\section{Thesis Structure}
+\section{Thesis Goals and Structure}
+The overarching thesis goal is the development of a high-order solver capable of modeling inviscid incompressible vorticity-dominated flows in 2D. In order to accomplish this several ancillary goals must be achieved: construction of a high-order advective solver capable of mixed order flux handling, and a high-order Biot-Savart evaluation routine that is as efficient as can be achieved within the bounds of a direct summation approach.
+
+At it's conclusion the chief contributions will be: a complete solver routine that integrates all necessary subsystems, validation of the solver and the underlying Eulerian vortex approach; and evaluation of the convergence, error, and performance of the method and solver.
+
 In Chapter 2, a brief overview of the underlying theory of the velocity-vorticity formulation, velocity evaluation, the Biot-Savart  kernel and the discontinuous Galerkin method are covered. The extension of one-dimensional DG methods to 2D via a line-DG style method will also be reviewed. 
 
-In Chapter 3 the methodology taken to construct a high-order Eulerian velocity-vorticity is covered. Formation of the semi-discrete system, along with the development of some specialized tools is addressed. A high-order velocity evaluation method is laid out, as well as some computation-saving modifications. Explicit time-stepping via a Runge-Kutta method optimized for the spectra of the DG operator is briefly reviewed. Finally a test plan is laid out for validation and investigation of the overall solver and method. 
+In Chapter 3 the methodology taken to construct a high-order Eulerian velocity-vorticity is covered. Chief among the concerns are the spatial basis, choice of interpolation, and numerical integration of the interpolation.
 
-In Chapter 4 results of the validation tests, convergence studies, and performance of the possible improvements and modifications is presented. Additionally runtime performance of the solver is examined, dependent on solver parameters, tolerances, order, etc.
+Chapter 4 covers solver specific implementation details. An introductory overview of the solver structure is first laid out. Then, formation of the semi-discrete system, along with the development of some specialized tools are addressed. A high-order velocity evaluation method is laid out, as well as some computation-saving modifications. Explicit time-stepping via a Runge-Kutta method optimized for the spectra of the DG operator is briefly reviewed.
 
-In Chapter 5 the successful performance of the method and solver is presented and discussed. Additionally an un-implemented extension to the velocity evaluation via a modified Fast Multipole Method is presented. Chapter 7 points in the direction of possible expansion of the method to include additional physical behaviors and configurations, as well as several next steps that should be taken to improve the solver for practical solution of larger problems beyond what is currently possible.
+In Chapter 5  a test plan is laid out for validation and investigation of the overall solver and method. Results of the validation tests, convergence studies, and performance of the possible improvements and modifications is presented. Additionally runtime performance of the solver is examined, dependent on solver parameters, tolerances, order, etc.
 
-Finally, Chapter 8 presents the specific implementation details necessary to implement the solver practically and efficiently. Several Matlab functions and routines are presented that either makeup the solver itself, or necessary auxiliary tools that are tangentially needed.
+In Chapter 6 the successful performance of the method and solver is presented and discussed. Additionally an un-implemented extension to the velocity evaluation via a modified Fast Multipole Method is presented. Chapter 7 points in the direction of possible expansion of the method to include additional physical behaviors and configurations, as well as several next steps that should be taken to improve the solver for practical solution of larger problems beyond what is currently possible.
+
+Finally, Chapter 9 presents the specific implementation details necessary to implement the solver practically and efficiently. Several Matlab functions and routines are presented that either makeup the solver itself, or necessary auxiliary tools that are tangentially needed.
 %------------------------------------
 \chapter{Theory}
 \section{Navier-Stokes: Velocity-vorticity form}
@@ -204,31 +211,58 @@ We have purposely left the flux in the second integral unevaluated in terms of t
 
 %------------------------------------
 \chapter{Methodology}
+Solver specific implementation details are deferred until the next chapter while we develop method specific choices and numerical machinery. However it is instructive to briefly outline the programmatic flow of the solver.
+\section{Preliminary Solver Overview}
+\vspace{-1cm}
+\singlespacing
+\begin{lstlisting}[language=Matlab]
+Define problem parameters
+Define solver parameters
+Calculate derived solver parameters
+Setup intitial conditions
+Initialize solver
+%Time stepping
+for t=0 to end
+   if Log?=yes
+      save system state to file and plot
+   end
+   %Loop through RK stages
+   for s=1 to last_stage
+      %For elements above threshold
+      for each vorticity source
+         calculate velocity contributions
+      end
+      %Calculate semi-discrete system terms
+      interpolate boundary_vorticity
+      calculate numerical_fluxes
+      calculate total_surface_flux
+      calculate internal_stiffness_flux
+		
+      vorticity_rate_of_change=...
+         internal_stiffness_flux - total_surface_flux
+		
+      RK_stage= (RK_coeff_a*RK_stage) +...
+         (time_step * vorticity_rate_of_change)
+      vorticity= vorticity + RK_coeff_b * RK_stage
+   end
+end
+\end{lstlisting}
+\doublespacing
+
+%
 \section{Method Specific DG Choices} \label{DGchoice}
-We now seek to take the general form of \eqref{DGtemp} and customize it to suit our needs. There are several choices to be made, the space of the basis, the physical meaning of the basis coefficients, and how it is formed on a 2D domain. We shall take the common choice of the space of polynomials for our basis. Additionally we shall choose our basis coefficients to be local nodal values that our basis interpolates.
+We now seek to take the general form of \eqref{DGtemp} and customize it to suit our needs. There are several choices to be made, the space of the basis, the physical meaning of the basis coefficients, and how the basis is constructed for a 2D domain. We shall take the common choice of the space of polynomials for our basis. Additionally we shall choose our basis coefficients to be local nodal values that our basis interpolates.
 
-One could be tempted to choose a modal basis, but for simplicity of extension a nodal basis allows one to readily expand 1D basis functions to 2D by means of a tensor product of two 1D bases. If the two 1D basis are linearly independent, then the tensor product spans $\mathbb{R}^2$. Furthermore, if the bases are orthogonal to each other than each can be treated separately from each other. To illustrate this we must choose our basis functions; a readily specified choice for interpolation is the Lagrange basis
+One could be tempted to choose a modal basis, but for simplicity of extension a nodal basis allows one to readily expand 1D basis functions to 2D by means of a tensor product of two 1D bases. If the two 1D basis are linearly independent, then the tensor product spans $\mathbb{R}^2$. Furthermore, if the bases are orthogonal to each other then each can be treated separately from each other. To illustrate this we must choose our basis functions; a readily specified choice for interpolation is the Lagrange basis:
 \be \psi_i(x) =\ell_i(x) = \prod_{\substack{p=0\\ p\neq i}}^M \frac{x-x_p}{x_i-x_p}\ee
-where M is the order of the basis and the set of points ${x_p}$ are the $M+1$ interpolation points. The interpolatory property of the Lagrange basis means that $\ell_i(x_j) = \delta_{ij}$, so that the value of the function at the interpolation points forms the expansion coefficients
-\be f(x) \approx \sum_{i=0}^M y_i \ell_i(x) \ee
-We can now use the developed 1D basis in a tensor product to form our 2D basis
-\be f(x,y) \approx \left[\sum_{j=0}^L z_j \ell_j(y) \right] \times \left[ \sum_{i=0}^M z_i \ell_i(x) \right] = \sum_{j=0}^M \sum_{i=0}^M z_{ij} \ell_j \ell_i =  \sum_{j=0}^M z_{ij} \ell_j \sum_{i=0}^M  \ell_i \ee
-In general the tensor basis could have unequal order along each direction, but for simplicity we use an equal order.
+where, M is the order of the basis and the set of points ${x_p}$ are the $M+1$ interpolation points. The interpolatory property of the Lagrange basis means that $\ell_i(x_j) = \delta_{ij}$, so that the value of the function at the interpolation points forms the expansion coefficients:
+\be f(x) \approx \sum_{i=0}^M z_i \ell_i(x) \ee
 
-An important consequence of the tensor basis means that the two basis directions are uncoupled except for at the interpolatory nodes at the intersection of each direction's basis. This is the central idea in a line-DG approach, we have turned what would be a 2D problem into two 1D problems of the form of \eqref{DGtemp}. The 2D time evolution of the overall system is the linear combination of the 1D evolutions; notably the instantaneous rate of change of a particular node is the sum of the rates from each direction. Heuristically, a node can be thought of as a differential element with each direction's basis acting on the respective "face" of the node.
-
-We can now substitute our basis into \eqref{DGtemp} to get a particular direction's PDE
-
-\ben{DGJoshTemp} \frac{\Delta x}{2}	\sum_{i=0}^M \left[ \frac{d y_i}{dt}	\int_{-1}^{1}\ell_i  \, \ell_j \;dX \right]
-+\hat{f}\ell_j \Big|^{x_R}_{x_L} 
-- \int_{-1}^{1} f(\aomega) \, \ell_j' \;dX = 0 \ee
-
-There are two more points to be made regarding method specific choices, the interpolation nodes and the flux interpolation.
 %
 \section{Interpolation Node Choice}
-It is well known that for even moderate orders equispaced interpolation nodes are a poor choice that will suffer from Runge's Phenomenon. The common solution is to use nodes that are the roots of an orthogonal polynomial family; Chebyshev, Legendre, and Legendre-Lobatto are all common choices. At first one may be tempted to choose the Lobatto points as they include nodes on the extremes of the domain, which are needed for the boundary flux evaluation. There is a minor problem with this however. 
+It is well known that for moderate orders equispaced interpolation nodes are a poor choice that will suffer from Runge's Phenomenon. The common solution is to use nodes that are the roots of an orthogonal polynomial family; Chebyshev, Legendre, and Legendre-Lobatto are all common choices \cite{Roni}. 
 
-We would ideally like to collocate our quadrature nodes with our interpolation points, so that they can be reused for any numerical integration. However a Gauss-Lobatto quadrature rule is $2N-1$ order accurate. This means if we have the product of two $N$th order polynomials that share the same nodes, a collocated Lobatto quadrature rule is not exact. While this is not outright impermissible, there is another point to consider.
+At first one may be tempted to choose the Lobatto points as they include nodes on the extremes of the domain, which are needed for the boundary flux evaluation. There is a minor problem with this however. We would ideally like to collocate our quadrature nodes with our interpolation points, so that they can be reused for any numerical integration. However a Gauss-Lobatto quadrature rule is $2N-1$ order accurate \cite{Roni}. This means if we have the product of two $N$th order polynomials that share the same nodes, a collocated Lobatto quadrature rule is not exact. While this is not outright impermissible, there is another point to consider.
 
 If the interpolation points are the roots of a single orthogonal polynomial, then the associated Lagrange bases of differing order are orthogonal. Consider the inner product of two Lagrange polynomials that share the same interpolation nodes which are the roots of the Legendre polynomials, one may rearrange terms to obtain
 
@@ -240,30 +274,53 @@ where $P_M$ is the Mth order Legendre polynomial and $\pi(x)$ is a $M-2$th order
 
 The Legendre polynomial is a result of the complete  polynomial being reconstructed from it's roots one by one. Since the Legendre polynomials form a complete basis $\pi(x)$ can be expressed in terms of a sum of them, all lower order than $P_M$ and all orthogonal to it as well, so the integral is zero. For the inner product of the same Lagrange basis for a point $i$, one simply recovers the associated quadrature weight $w_i$ so that in general
 \be \int \ell_i(x) \ell_j(x) dx = \delta_{ij} w_j \ee
+
+%
+\section{Line-DG}
+An important consequence of the tensor basis means that the two basis directions are not coupled except at the interpolatory nodes at the intersection of each direction's basis. This is the central idea in the line-DG \cite{Persson2013} approach, a 2D problem is transformed into two 1D problems of the form of \eqref{DGtemp}. The 2D time evolution of the overall system is the linear combination of the 1D evolutions; notably the instantaneous rate of change of a particular node is the sum of the rates from each direction. Heuristically, a node can be thought of as a differential element with each direction's basis acting on the respective "face" of the node.
+
+We can now use the developed 1D basis in a tensor product to form our 2D basis
+\be f(x,y) \approx \left[\sum_{j=0}^L z_j \ell_j(y) \right] \times \left[ \sum_{i=0}^M z_i \ell_i(x) \right] = \sum_{j=0}^M \sum_{i=0}^M z_{ij} \ell_j \ell_i =  \sum_{j=0}^M z_{ij} \ell_j \sum_{i=0}^M  \ell_i \ee
+In general the tensor basis could have unequal order along each direction, but for simplicity we use an equal order.
+
+We now substitute our basis into \eqref{DGtemp} to get a particular direction's PDE
+\ben{DGJoshTemp} \frac{\Delta x}{2}	\sum_{i=0}^M \left[ \frac{d z_{ij}}{dt}	\int_{-1}^{1}\ell_i  \, \ell_j \;dX \right]
++\hat{f}\ell_j \Big|^{x_R}_{x_L} 
+- \int_{-1}^{1} f(\aomega) \, \ell_j' \;dX = 0 \ee
+We solve the PDE "line-wise"; we form the tensor product of the chosen 1D interpolation nodes, as shown in \ref{fig:DGtensorSplit}. In this example we would solve 10 1D problems: 5 along the $x$ directions and 5 along $y$. The solution of \eqref{DGJoshTemp} for any one of these 1D problems yields the rate of change of vorticity for all nodes along that line. This only accounts for advection along one-direction; the complimentary perpendicular line intersecting at a node on the first line also contributes. In the example figure the rate of change of the vorticity at the node at the intersection of the two lines is the sum of rates of changes from each line. In general the rate of change at a particular node is:
+
+\begin{figure}
+\centering
+\includegraphics[width=3.5in]{lineDGelemDiag.PNG}
+\caption{\label{fig:DGtensorSplit}The splitting of nodal contributions along "line-wise" directions on a tensor grid.}
+\end{figure}
+
+\be \frac{\partial \omega_{ij}}{\partial t} = (\frac{\partial \omega_{ij}}{\partial t})_{x-line} + (\frac{\partial \omega_{ij}}{\partial t})_{y-line} \ee
+
 %
 \section{Flux Interpolation}
-It may seem somewhat pedantic to worry about the nature of the flux interpolant if one thinks only in the case of collocated interpolation points for the vorticity and velocity. After all, although one may think of the interpolant as either the interpolation of the product of the velocity and vorticity, or the product of the interpolations of velocity and vorticity; the resultant interpolant is identical at the nodes
+The flux interpolant can be thought of  as either the interpolation of the product of the velocity and vorticity, or the product of the interpolations of velocity and vorticity; the result of these two interpolants are identical at the nodes
 \be I_N f(x_i) = I_N(u(x_i) \omega(x_i)) = I_N(u(x_i)) I_N(\omega(x_i)) \ee
 Furthermore, if we perform a Gauss-Legendre quadrature with collocated nodes, the quadrature is exact and the integral of either choice is equal
 \be \int f \;dx \approx \sum_i^M u_i \omega_i w_i = \sum_i^M u_i \sum_j^M \omega_j \int \ell_i \ell_j \ee
-The interpolation of the product may be order $M$, while the product of the interpolations is order $2M$, but the integral of either is equal; deciding between the two options would seem to be moot. Consider however the case where we wish to integrate the product of the interpolated flux and the derivative of the weighting function. We are fortunate that the interpolation of the product is order M and the derivative of the weighting basis M-1, the collocated Gauss-Legendre quadrature is exact
+The interpolation of the product may be order $M$, while the product of the interpolations is order $2M$, but the integral of either is equal; deciding between the two options may appear to be inconsequential. Consider however the case where we wish to integrate the product of the interpolated flux and the derivative of the weighting function. The interpolation of the product is order M and the derivative of the weighting basis M-1, the collocated Gauss-Legendre quadrature is exact
 
 \be \int I_N(f) \, \ell_j'(x) \;dx = \sum_i^M u_i\omega_i \ell_j'(x_i) \ee
 
-There is an important decision we have implicitly made here however! By choosing the quadrature of this form we have implicitly chosen to use the interpolant of the product. The two different flux interpolation choices no longer result in the same integral value. Importantly this means if we expect to need the full interpolatory order N of both the velocity and the vorticity in the stiffness integral, we will not be able to recover them. Instead we will recover the Nth order interpolant of them.
+There is an important decision that has been implicitly made however. By choosing the quadrature of this form we are choosing the interpolant of the product. The two different flux interpolation choices no longer result in the same integral value. Importantly this means if we expect to need the full interpolatory order N of both the velocity and the vorticity in the stiffness integral, we will not be able to recover them. Instead we will recover the Nth order interpolant of them.
 
 To retain the full order of each quantity, as well as suffer no quadrature error, we would have to instead evaluate the integral of the form
 \be \begin{split}\int u(x) \omega(x) \ell_j'(x) \;dx &\approx \int \sum_i^M u_i \ell_i(x) \sum_k^M \omega_k \ell_k(x) \;\ell_j'(x) \;dx\\
 &=\sum_i^M u_i \sum_k^M \omega_k \int \ell_i(x) \ell_k(x) \ell_j'(x) \;dx
 \end{split}\ee
-We will do just this in the next section.
+We will do this in the next section.
 %
 \section{Modified Quadrature}
 To retain full interpolatory order of both the velocity and vorticity in the stiffness integral we seek a set of quadrature weights derived from
 \be \sum_i^M u_i \sum_k^M \omega_k \;w_{unknown} = \sum_i^M u_i \sum_k^M \omega_k \int \ell_i(x) \ell_k(x) \ell_j'(x) \;dx \ee
 note that we might alternatively wish to find something that looks more like the Gauss-Legendre quadrature rule
 \be \sum_i^M u_i \sum_k^M \omega_k \sum_q^M \ell_j'(x_q) \;w_{unknown2} \ee
-However we can actually go about it better keeping the derivative weighting basis inside the integral!
+However we can actually go about it better keeping the derivative weighting basis inside the integral.
 The derivative of the weighting basis can be derived analytically by use of logarithmic differentiation
 \be f' = f \, [ln(f)]' \rightarrow \ell_j'(x)=\ell_j(x) \sum_{\substack{p=0\\ p\neq j}}^M \frac{1}{(x-x_p)} \ee
 the resultant form can now be included in the integral.
@@ -276,30 +333,57 @@ The resultant modified quadrature now takes the form
 \ben{modQuad} \int u(x) \omega(x) \ell_j'(x) \;dx \approx \mathbf{u}_i^T \mathbf{W}_{ikj} \, \boldsymbol{\omega}_k \ee
 for each $j$th weighting basis function.
 
-This may seem to incur a high cost, until one considers several facts. First, normal Gauss-Legendre quadrature requires one to perform the stiffness integral for each weighting basis already, so the $j$ dimension of the quadrature matrix is no worse than before. Secondly, one is able to extract \textit{more} information out of the \textit{same} number of interpolation points and achieve superior convergence of the stiffness integral than the standard Gauss-Legendre rule. Third, by including the derivative of the weighting basis in the integral for the quadrature weight matrix, we integrate it exactly a priori. It never appears in the later quadrature of the stiffness integral except implicitly in the quadrature weight matrix itself.
+This may seem to incur a high cost, until one considers several facts:
+\begin{itemize}
+\item Normal Gauss-Legendre quadrature requires the stiffness integral be calculated for each weighting basis already, so the $j$ dimension of the quadrature matrix is no worse than before. 
+\item One is able to extract \textit{more} information out of the \textit{same} number of interpolation points and achieve superior convergence of the stiffness integral than the standard Gauss-Legendre rule. B
+\item By including the derivative of the weighting basis in the integral for the quadrature weight matrix, we integrate it exactly a priori. It never appears in the later quadrature of the stiffness integral except implicitly in the quadrature weight matrix itself.
+\item The order and definition of the Lagrange basis functions for the vorticity and velocity interpolations are \textit{decoupled}. It is not necessary for the order of the velocity interpolation to be equal to the vorticity. Indeed, the set of interpolation nodes don't even have to be of the same \textit{kind}. It is completely permissible for example to have the vorticity nodes be the Gauss-Legendre nodes, and the velocity nodes to be Lobatto nodes.
+\end{itemize}
 
-Finally, and most interestingly the order and definition of the Lagrange basis functions for the vorticity and velocity interpolations are \textit{decoupled}. It is not necessary for the order of the velocity interpolation to be equal to the vorticity. Indeed, the set of interpolation nodes don't even have to be of the same \textit{kind}. It is completely permissible for example to have the vorticity nodes be the Gauss-Legendre nodes, and the velocity nodes to be Lobatto nodes.
-
-This has serious advantages for the overall method of the thesis, both in terms of minimizing interpolation and quadrature error, as well as giving excellent flexibility in the solver. Normally to vary the order of the velocity interpolation one would need to re-interpolate at the vorticity nodes to recover the flux interpolant. This adds additional interpolation error, as well as potential aliasing problems. This additional interpolation step would also end up requiring about the same number of operations as using the larger quadrature weight matrix, making the two about equal in terms of computational cost. Instead one is free to choose the velocity order freely and the solver adapts seamlessly.
+This has significant advantages for the overall method, both in terms of minimizing both interpolation and quadrature error, as well as giving excellent flexibility in the solver. Normally to vary the order of the velocity interpolation one would need to re-interpolate at the vorticity nodes to recover the flux interpolant. This adds additional interpolation error, as well as potential aliasing problems. This additional interpolation step would also require about the same number of operations as using the larger quadrature weight matrix, making the two about equal in terms of computational cost. Instead one is free to choose the velocity order freely and the solver adapts seamlessly.
 
 There is an additional computational savings as well. Although we would prefer to use the Legendre points for the vorticity (to preserve the diagonal mass matrix structure that we shall discuss in a coming section), we would like to use Lobatto points for the velocity. Ordinarily we would have to evaluate the boundary velocities and then leave them unused in the stiffness integral with normal Gauss-Legendre quadrature; both the vorticity and velocity would have to share the same  nodes or face re-interpolation costs. This adds wasted velocity evaluations which are the most expensive operation. One might be tempted to only evaluate the velocity at the Legendre points and extrapolate the velocity at the boundaries, but there is no guarantee that the two interpolated velocities from adjacent elements would agree; this would present obvious challenges in the boundary flux evaluation. However by using the modified quadrature matrix one can freely mix node sets, meaning the boundary velocity values are reused in the stiffness integral.
 
-One other point remains worth mentioning regarding the modified quadrature matrix, the maximum order polynomial that can be integrated exactly. Similiar to some composite quadrature rules the order depends on whether the number of nodes is odd or even. An even node basis for one of the bases results in a $2M+1$ order accurate method, odd node number results in a $2M$ order accurate method (still sufficient to exactly integrate the product of two Mth order interpolants). A script in the thesis code repository is available that validates the convergence claims and order of accuracy of the modified quadrature method.
-%
+The maximum order polynomial that can be integrated exactly is also similar to some composite quadrature rules (such as Gauss-Kronrod \cite{Roni}): the order depends on whether the number of nodes is odd or even. An even node basis for one of the bases results in a $2M+1$ order accurate method, odd node number results in a $2M$ order accurate method (still sufficient to exactly integrate the product of two Mth order interpolants). A script in \S \ref{Algs} validates the convergence claims and order of accuracy of the modified quadrature method.
+
+Table \ref{table:QuadMod} reports an example convergence study for a mixed order/type run with an 7th order Gauss-Legendre and 9th order Gauss-Lobatto quadrature rule showing quadrature error to within machine precision up to order $M+N+1$. It also compares the error in the interpolation of product (IoP) and product of interpolants (PoI), with the latter being an order of magnitude more accurate for this set of example functions.
+
+\begin{table}
+\centering
+\caption{Convergence of Modified Quadrature for a 7/9th order Method}\label{table:QuadMod}
+\begin{tabular}{llllll}
+\hline
+Order M+N & IoP       & PoI      & Quad. Error & Discretiz. Error &  Order M  \\ \hline
+5         & -0.0543   & 0.234    & 2.22e-16         & 0.234                & 3  \\
+7         & 0.0162    & 0.0182   & -5.55e-16        & 0.0182               & 4  \\
+9         & -0.0143   & 0.0493   & -1.67e-16        & 0.0493               & 5  \\
+11        & 0.00342   & 0.00133  & 2.22e-16         & 0.00133              & 6  \\
+13        & -0.00182  & 0.00375  & 5.00e-16         & 0.00375              & 7  \\
+15        & 0.000445  & 9.38e-05 & 5.55e-16         & 9.38e-05             & 8  \\
+17        & -0.000161 & 0.000139 & 8.33e-16         & 0.000139             & 9  \\
+19        & 4.20e-05  & 6.15e-06 & 0.000326         & 0.000332             & 10 \\
+21        & -1.11e-05 & 2.90e-06 & 0.000523         & 0.000526             & 11 \\
+23        & 3.15e-06  & 3.37e-07 & -9.75e-05        & -9.72e-05            & 12 \\ \hline
+\end{tabular}
+\end{table}
+
+%------------------------------------
+\chapter{Implementation}
 \section{Overall Solver Structure}
 It is worth briefly mentioning the overall structure of the solver, as it motivates some of the machinery developed and provides a useful overview of the detailed portions of the following sections. The preamble contains various solver configuration parameters and initializes most of the persistent data objects. It also initializes quadrature information which in turn is used to initialize the quadrature weight matrices needed for the order of the vorticity and velocity. The quadrature matrix is modified in place to incorporate the Jacobian as well as the inverse Mass matrix entry so that these do not needed to be multiplied by after the fact.
 
-Most data is stored in one of two different formats, either a column-major form that matches Matlab's memory layout to optimize indexing performance, or a "stream-wise" format. The stream-wise terminology shouldn't be confused with any physical phenomenon, rather it relates to the tensor composition of the code. As the $x$ and $y$ direction problems are largely decoupled, each is treated independently, with a "stream" being a particular 1D basis along the coordinate direction. Adjacent streams are parallel 1D basis functions that share a boundary node. For an example layout of x and y streams see Figure~\ref{fig:streams}.
+Most data is stored in one of two different formats, either a column-major form that matches Matlab's memory layout to optimize indexing performance, or a "line-wise" format. The line-wise terminology shouldn't be confused with any physical phenomenon, rather it relates to the tensor composition of the code. As the $x$ and $y$ direction problems are largely decoupled, each is treated independently, with a "line" being a particular 1D basis along the coordinate direction. Adjacent lines are parallel 1D basis functions that share a boundary node. For an example layout of $x$ and $y$ lines see Figure~\ref{fig:streams}.
 \begin{figure}
 \centering
 \includegraphics[width=5.5in]{streams.PNG}
-\caption{\label{fig:streams}"Stream-wise" numbering for elements 1, 5, and 9 in a 4x5 element global domain.}
+\caption{\label{fig:streams}"Line-wise" numbering for elements 1, 5, and 9 in a 4x5 element global domain.}
 \end{figure}
-The next section of the solver creates element-stream-boundary-node associativity. These are used to freely select the appropriate sections of data associated with a particular hierarchy. Most of these are simply a column-wise index list, some are specifically shaped so that the returned data from the index selection is the correct shape for reuse (ND matrix etc). This is also where the coordinates of the vorticity nodes, velocity boundary nodes, and velocity internal element nodes are specified. 
+The next section of the solver creates element-line-boundary-node associativity. These are used to freely select the appropriate sections of data associated with a particular hierarchy. Most of these are simply a column-wise index list, some are specifically shaped so that the returned data from the index selection is the correct shape for reuse (ND matrix etc). This is also where the coordinates of the vorticity nodes, velocity boundary nodes, and velocity internal element nodes are specified. 
 
 The next section consists of a cell list of functions that specify the initial conditions of the system. The resultant initial condition is the linear superposition of all the selected generating functions. The interpolation vectors for the surface flux are constructed, again incorporating the Jacobian and inverse matrix entry like in the quadrature weight matrix to avoid element-wise multiplications later. Finally the "global" kernel evaluation matrices are constructed for later re-use (these will be described in greater detail in a following section).
 
-At this point the remainder of the code occurs inside the main time marching loop. An explicit Runge-Kutta routine is used with an inner loop used for stage-stepping. Depending on the solver setup, the velocity evaluation code is either executed every time step, or every stage. The sum of the vorticity in each element is computed and those above a threshold are added to element-wise and stream-wise masks. Each element in the mask is treated as a source of vorticity and the velocity from that element is added to the current running total for the global velocity. Total element and element boundary velocities are formed for later use in the semi-discrete system.
+At this point the remainder of the code occurs inside the main time marching loop. An explicit Runge-Kutta routine is used with an inner loop used for stage-stepping. Depending on the solver setup, the velocity evaluation code is either executed every time step, or every stage. The sum of the vorticity in each element is computed and those above a threshold are added to element-wise and line-wise masks. Each element in the mask is treated as a source of vorticity and the velocity from that element is added to the current running total for the global velocity. Total element and element boundary velocities are formed for later use in the semi-discrete system.
 
 The DG advection code always occurs within the RK stage loop. Vorticity is extrapolated at the element boundary. Boundary conditions are applied and the element boundary fluxes are evaluated. The stiffness term is evaluated for the current stage's vorticity and velocity configuration. At this point the semi-discrete system is complete and the stage's rate of change for all nodes is computed for each direction and the two are added together. The new vorticity is computed for the stage and both the time-stepping and stage-stepping loops wrap.
 
@@ -315,19 +399,19 @@ This proves particular useful for the mass term, meaning the choice of Legendre 
 
 One could instead choose the set of Lobatto points to avoid extrapolating the vorticity at the element boundaries, but this would result in a full mass matrix that when inverted necessitates a matrix-vector product which is about as computationally expensive as extrapolating the boundary vorticity.
 %
-\section{Use and Abuse of Structured Tensor Mesh}
-The cases considered all are free of impinging geometry and have no bias known a priori, as such a constant-size structured mesh of squares is used. It is worth noting that this is by no means required, an un-structured mesh is easily treatable via a mapping to a canonical computational element \cite{Persson2013}. The structured mesh merely affords ease of implementation, as well as simplification of element-stream-boundary-node indexing.
+\section{Usefulness of Structured Tensor Mesh}
+The test cases that are considered in this thesis are all free of impinging geometry and have no bias known a priori, as such a constant-size structured mesh comprised of squares is used. It is worth noting that this is by no means required, an un-structured mesh is easily treated via a mapping to a canonical computational element \cite{Persson2013}. The structured mesh merely affords ease of implementation, as well as simplification of element-line-boundary-node indexing.
 
 Likewise, the tensor product basis used for the vorticity can be exploited for computational and ease-of-implementation gains. The tensor product means that the 2D integral of the vorticity times the Biot-Savart kernel can be reduced by a matrix-vector and vector-vector product by pre-multiplying the vorticity of a source by the outer product of the Gauss-Legendre weights component-wise, which is then reused for each kernel-vorticity integration.
 \be \int \omega \times K \;dx \approx \boldsymbol{w}^T(\boldsymbol{\omega}_E.*\boldsymbol{K}) \boldsymbol{w} \rightarrow (\boldsymbol{ww}^T.*\boldsymbol{\omega})\boldsymbol{K} \ee
 where ".*" indicates element-wise multiplication per Matlab convention. It's worth noting that the pre-multiplied product and the kernel are reshaped to be row and column vectors respectively. If there are many kernels to be integrated for a particular vorticity source the computational savings are appreciable.
 %
 \section{Stiffness Matrix}
-We can apply the results for the modified quadrature rule from \eqref{modQuad} to the purpose of evaluating the stiffness integral we have left unevaluated thus far. Recall that for maximum flexibility the velocity interpolation order is independent of the vorticity order. In addition the Lobatto points are chosen for the velocity to reuse the boundary velocities. At first glance it might seem actually counter productive to choose a different order or set of nodes for the velocity. To avoid needing "off-stream" interpolation the velocity nodes should be co-linear with the vorticity streams. The result for a 5th order velocity and vorticity field is shown in Figure~\ref{fig:VelocityLobatto}.
+We can apply the results for the modified quadrature rule from \eqref{modQuad} to the purpose of evaluating the stiffness integral we have left unevaluated thus far. Recall that for maximum flexibility the velocity interpolation order is independent of the vorticity order. In addition the Lobatto points are chosen for the velocity to reuse the boundary velocities. At first glance it might seem actually counter productive to choose a different order or set of nodes for the velocity. To avoid needing "off-line" interpolation the velocity nodes should be co-linear with the vorticity lines. The result for a 5th order velocity and vorticity field is shown in Figure~\ref{fig:VelocityLobatto}.
 
-It would appear we actually need double the velocity evaluation points! How could this be a savings over collocated velocity points? The non-square tensor product of the Lobatto nodes with the Legendre nodes means that the x-stream velocity nodes will never coincide with the y-stream velocity nodes.
+It would appear we actually need double the velocity evaluation points! How could this be a savings over collocated velocity points? The non-square tensor product of the Lobatto nodes with the Legendre nodes means that the $x$-line velocity nodes will never coincide with the $y$-line velocity nodes.
 
-The answer is that the velocity is evaluated component-wise. Along the x-stream we only require $u_x$ and along the y-stream we only require $u_y$. We do not need need the other velocity component at any particular velocity node, so though they may not coincide we don not miss out on any opportunities. The trade-off is that the velocity field is perhaps a bit harder to post-process, but if the result cuts in half the expected runtime of the most expensive portion of the method it seems a fair trade-off.
+The answer is that the velocity is evaluated component-wise. Along the $x$-line we only require $u_x$ and along the $y$-line we only require $u_y$. We do not need need the other velocity component at any particular velocity node, so though they may not coincide we don not miss out on any opportunities. The trade-off is that the velocity field is perhaps a bit harder to post-process, but if the result cuts in half the expected runtime of the most expensive portion of the method it seems a fair trade-off.
 
 We can now happily apply the modified quadrature matrix to our elemental PDE
 \ben{DGJoshTemp3} \frac{d \aomega_j}{dt} \frac{w_j \Delta x}{2}
@@ -336,12 +420,12 @@ We can now happily apply the modified quadrature matrix to our elemental PDE
 rearranging to obtain the rate of change of the nodal vorticity
 \ben{DGJosh} \frac{d \aomega_j}{dt}
 =\frac{2}{w_j \Delta x} \left[\mathbf{u}^T \mathbf{W}_{--j} \, \boldsymbol{\omega} - \hat{f}\ell_j \Big|^{x_R}_{x_L}\right]  \ee
-This nodal equation now describes the stream's contribution to the time evolution of a particular node. This calculation is performed for all vorticity nodes on all x-streams and added to the rate of change of the matching vorticity nodes in the y-streams
+This nodal equation now describes the line's contribution to the time evolution of a particular node. This calculation is performed for all vorticity nodes on all $x$-lines and added to the rate of change of the matching vorticity nodes in the $y$-lines.
 
 \begin{figure}
 \centering
 \includegraphics[width=5.5in]{VelocityLobatto.PNG}
-\caption{\label{fig:VelocityLobatto}5$^{th}$ order Lobatto velocity nodes along x-streams (dark circles) and y-streams (empty circles).}
+\caption{\label{fig:VelocityLobatto}5$^{th}$ order Lobatto velocity nodes along $x$-lines (dark circles) and $y$-lines (empty circles).}
 \end{figure}
 
 %
@@ -434,50 +518,9 @@ Although it is expected that in the stationary vortex case the choice of stage o
 
 To examine the long-term behavior of the method the $L^2$ norm of the error \ref{fig:L2P1} as well as the dissipation of the total vorticity in the domain \ref{fig:wtotP1} are plotted through the course of the vortex evolution. The final surface plot and contour plot can be seen in Figures \ref{fig:P1surf} and \ref{fig:P1cont} respectively.
 
-\begin{figure}
-\centering
-\includegraphics[width=5in]{wtot_Inner_NM5_K6_delt02_delpt2.PNG}
-\caption{\label{fig:wtotP1}Dissipation of domain-wide vorticity, P1.}
-\end{figure}
-
-\begin{figure}
-\centering
-\includegraphics[width=5in]{L2_Inner_NM5_K6_delt02_delpt2.PNG}
-\caption{\label{fig:L2P1}Discrete $L^2$ norm error, P1.}
-\end{figure}
-
-\begin{figure}
-\centering
-\includegraphics[width=5in]{P1surf.PNG}
-\caption{\label{fig:P1surf}Surface plot of Perlmann vortex at t=48, P1.}
-\end{figure}
-\begin{figure}
-\centering
-\includegraphics[width=5in]{P1cont.PNG}
-\caption{\label{fig:P1cont}Contour plot of Perlmann vortex at t=48, P1.}
-\end{figure}
-
 \subsection{Strain: Interacting Vortex Patches}
 
-\begin{figure}
-\centering
-\includegraphics[width=5.5in]{StrainPatches.PNG}
-\caption{\label{fig:StrainPatches}Validation case- Evolution of four patches as published in \cite{Strain1996} (Fig. 6), S1.}
-\end{figure}
-
 \subsection{Koumoutsakos: Elliptical Vortex}
-
-
-\begin{table}[h]
-\begin{tabular}{lllllllll}
-\hline
-C  & N & M & KxK & $\Delta t$ & Sta(g)e/Ste(p) & $\sigma$ & $T_{final}$ & BC        \\ \hline
-P1 & 5 & 5 & 6   & 0.02     & p              & 0.2    & 48     & No inflow \\
-S1 & 5 & 5 & 32  &          & p              & 0.15   & 28     & No inflow \\
-K1 & 5 & 5 & 20  & 0.02     & p              & 0.2    & 36     & No inflow \\
-4  &   &   &     &          &                &        &        &           \\ \hline
-\end{tabular}
-\end{table}
 
 \section{Convergence}
 \subsection{Perlmann: Stationary Vortex}
@@ -488,17 +531,6 @@ K1 & 5 & 5 & 20  & 0.02     & p              & 0.2    & 36     & No inflow \\
 
 
 \section{Stage vs. Step-wise Velocity Evaluation}
-\begin{figure}
-\centering
-\includegraphics[width=5in]{dL2_NM5_K6.PNG}
-\caption{\label{fig:dL2SS}Ham.}
-\end{figure}
-
-\begin{figure}
-\centering
-\includegraphics[width=5in]{dwtot_NM5_K6.PNG}
-\caption{\label{fig:dwtotSS}Ham.}
-\end{figure}
 
 \section{Reduced Order Velocity}
 
@@ -530,8 +562,11 @@ Comparison of existing analytical solutions vs model (Euler vortex, 5th order po
 \section{FMM Improvements}
 \section{2D Non-classical Quadrature for Nearly Singular Integrands}
 %------------------------------------
-\chapter{Implementation and Algorithms}
+\chapter{Notable Code and Algorithms}\label{Algs}
 \section{Modified Two-part quadrature}
+
+It is applied to the integration of the product of $M$ and $N=M-1$ order functions, with M varying over a particular range. The interpolation of the product (IoP) and product of the interpolants (PoI) were numerically integrated by Matlab's built-in adaptive quadrature routine until machine precision was 
+
 Vectorized Lagrange evaluation, Lagrange derivatives, etc
 \newpage
 \section{Binary Singleton Expansion Matrix-Vector Products}
@@ -613,6 +648,8 @@ W.H Reed and T.R. Hill. Triangular mesh methods for the neutron transport equati
 Lesaint, P., and Pierre-Arnaud Raviart. On a finite element method for solving the neutron transport equation. Mathematical aspects of finite elements in partial differential equations 33 (1974): 89-123.
 \bibitem{Persson2013}
 P.O. Persson. A Sparse and High-Order Accurate Line-Based Discontinuous Galerkin Method for Unstructured Meshes. J. Comp. Phys., Vol. 233, pp. 414-429, Jan 2013.
+\bibitem{HestWar}
+Hesthaven, Jan S., and Tim Warburton. Nodal discontinuous Galerkin methods: algorithms, analysis, and applications. Vol. 54. Springer Science \& Business Media, 2007.
 %Important vortex papers
 \bibitem{HaldReview}
 Hald, Ole H. Convergence of vortex methods. Vortex methods and vortex motion. Vol. 1. 1991.
@@ -668,6 +705,14 @@ Toulorge, Thomas, and Wim Desmet. Optimal Runge–Kutta schemes for discontinuou
 Niegemann, Jens, Richard Diehl, and Kurt Busch. Efficient low-storage Runge–Kutta schemes with optimized stability regions. Journal of Computational Physics 231.2 (2012): 364-372.
 \bibitem{Carpenter}
 Carpenter, Mark H., and Christopher A. Kennedy. Fourth-order 2N-storage Runge-Kutta schemes. (1994).
+%Misc
+\bibitem{Roni}
+Quarteroni, Alfio, and Alberto Valli. Numerical approximation of partial differential equations. Vol. 23. Springer Science \& Business Media, 2008.
+\bibitem{Allen}
+Allen, Myron B., and Eli L. Isaacson. Numerical analysis for applied science. Vol. 35. John Wiley \& sons, 2011.
+\bibitem{Gustaf}
+Gustafsson, Bertil. Fundamentals of Scientific Computing. Vol. 8. Springer Science \& Business Media, 2011.
+%Licenses
 \bibitem{KoumLic}
 Reprinted from Publication title, Vol /edition number, Author(s), Title of article / title of chapter, Pages No., Copyright (Year), with permission from Elsevier [OR APPLICABLE SOCIETY COPYRIGHT OWNER]."
 \bibitem{StrainLic}
