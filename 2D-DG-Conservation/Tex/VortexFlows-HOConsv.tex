@@ -109,18 +109,19 @@ Finally, Chapter 9 presents the specific implementation details necessary to imp
 \chapter{Theory}
 \section{Navier-Stokes: Velocity-vorticity form}
 The Navier-Stokes momentum equation is
- \be \rho \left(\frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u} \right) = -\nabla \bar{p} + \mu \nabla^2 \mathbf u + \tfrac13 \, \mu \nabla (\nabla\cdot\mathbf{u}) + \rho \mathbf{g}  \ee
+ \be \rho \left(\frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u} \right) = -\nabla p + \mu \nabla^2 \mathbf u + \tfrac13 \, \mu \nabla (\nabla\cdot\mathbf{u}) \ee
 where $u$ is the velocity field, $p$ is the pressure field, and $\rho$ is the density. If we restrict ourselves to incompressible flows and define the quantity \textit{vorticity} as
-\be \omega = \nabla \times u \ee
+\be \mathbf{\omega} = \nabla \times \mathbf{u} \ee
 Then the traditional form of the Navier-Stokes equations can be recast
-\ben{VV3D} \frac{\partial \omega}{\partial t} + u \cdot \nabla \omega - \omega \cdot \nabla u = S(x,t)\ee
+\ben{VV3D} \frac{\partial \omega}{\partial t} +  \mathbf{u} \cdot \nabla \omega - \omega \cdot \nabla  \mathbf{u} = S(x,t)\ee
 where we collect viscous generation of vorticity in $S$.
 
-There are several benefits to the recast form; first, it explicitly conserves vorticity. The vorticity is recoverable from the primitive variable Navier-Stokes, but the diffusive nature of most upwinded advection means coherent vortical structures are quickly smeared. Also, frequently the distribution of the vorticity is quite sparse. The primitive variable form requires the velocity and pressure be evaluated over the whole domain.
-
-In comparison, the velocity-vorticity form only requires velocity to be evaluated in areas of non-zero vorticity. In areas where there is no vorticity, nothing needs to be advected. The sparser and more concentrated the vorticity, the larger the gap in performance between the two forms; this is especially true in 3D domains where the scaling from surfaces to volumes gives even greater opportunity for empty local regions in the domain. 
-
-Additionally, the primitive-variable form requires the pressure be  solved via a separate elliptic equation. The velocity-vorticity form is absent the pressure and automatically ensures satisfaction of continuity.
+There are several benefits to the recast $\mathbf{u}$-$\omega$ form:
+\begin{enumerate}
+\item Explicit conservation of vorticity. The vorticity is recoverable from the primitive variable Navier-Stokes, but the diffusive nature of most upwinded advection means coherent vortical structures are quickly smeared.
+\item Frequently the distribution of the vorticity is quite sparse. The primitive variable form requires the velocity and pressure be evaluated over the whole domain. In comparison, the velocity-vorticity form only requires velocity to be evaluated in areas of non-zero vorticity. In areas where there is no vorticity, nothing needs to be advected. The sparser and more concentrated the vorticity, the larger the gap in performance between the two forms; this is especially true in 3D domains where the scaling from surfaces to volumes gives even greater opportunity for empty local regions in the domain. 
+\item The primitive-variable form requires the pressure be  solved via a separate elliptic equation. The velocity-vorticity form is absent the pressure and automatically ensures satisfaction of continuity.
+\end{enumerate}
 
 For 2-D distributions of vorticity, several simplifications can be made. The originally vectorial vorticity becomes a scalar quantity, all vorticity is directed normal to the plane. As a result, the vortex stretching term in \eqref{VV3D} becomes zero. The only non-zero component of $\omega$ is in the z-direction, however the gradient of the velocity field is zero in the z-direction, so the product is therefore zero. The result is
 \ben{VV2D} \frac{\partial \omega}{\partial t} + u \cdot \nabla \omega = S(x,t)\ee
@@ -128,27 +129,26 @@ or if instead the second term is expressed in terms of the flux of the vorticity
 \ben{VV2DB} \frac{\partial \omega}{\partial t} + \frac{\partial f}{\partial x_i}= S(x,t)\ee
 
 \section{Velocity Field Evaluation: The Biot-Savart Integral}
-Since $\omega$ is the quantity of interest in the flowfield solution, the question must be posed: how does one determine the velocity field? For an incompressible flow we can relate the velocity and vorticity by
+Since $\omega$ is the quantity of interest in the flowfield solution, the question must be posed: how does one determine the velocity field? For an incompressible 2D or 3D flow we can relate the velocity and vorticity by
 \be \nabla^2 u = -\nabla \times \omega \ee
 If inverted, the Biot-Savart integral is obtained
 \ben{BS} u(x^*) = \int_\Omega K(x^*,x) \times \omega(x) dx \ee
-where $x^*$ is the point we wish to evaluate the velocity, $x$ is the coordinate in regions of non-zero vorticity, and $K(x^*,x)$ is the singular Biot-Savart kernel
-\ben{BSkern} K(x^*,x) = \frac{-1}{4 \pi} \frac{x^*-x}{|x^*-x|^3} \ee
+where $x^*$ is the point we wish to evaluate the velocity, $x$ is the coordinate in regions of non-zero vorticity, and $K(x^*,x)$ is the singular Biot-Savart kernel \cite{BealeMajda}
+\ben{BSkern} K(x^*,x) = \frac{-1}{2 \pi} \frac{x^*-x}{|x^*-x|^2} \ee
 
-There are several important points to note that are a consequence of this inversion. First, rather than solving the Poisson equation for the entirety of the domain we choose to evaluate the velocity at some subset. For the purposes of advecting the velocity we will only need velocities near the vorticity itself. However, if the number of required velocity evaluation points is roughly proportional to the $N$ degrees of freedom of our vorticity approximation, then it might be expected for the velocity calculations to scale as $\mathcal{O}(N^2)$.
+There are several important points to note that are a consequence of this inversion. First, rather than solving the Poisson equation for the entirety of the domain we choose to evaluate the vorticity at some subset. For the purposes of advecting the velocity we will only need velocities near the vorticity itself. However, if the number of required velocity evaluation points is roughly proportional to the $N$ degrees of freedom of our vorticity approximation, then it is expected the velocity calculations will scale as $\mathcal{O}(N^2)$.
 
-There are numerous methods to reduce the computational complexity of similar N-body type problems to $\mathcal{O}(NlogN)$ or $\mathcal{O}(N)$. Cyclic reduction \cite{SchumannSweet1976}, tree-codes \cite{LindsayKrasny2001,BarnesHut1986}, and FMM \cite{GreengardRokhlin1987} are all possibilities. However, because the velocity field calculation method is essentially decoupled from the discretization of the PDE, there is no a priori assurance that the velocity calculated is of sufficient fidelity to ensure convergence of the overall method (let alone convergence at the order one might expect based on solely the discretization). For maximum flexibility in investigating this dependency of overall convergence on the calculated velocity field we shall eschew more efficient techniques so that we can directly control the fidelity of the velocity field.
+There are numerous methods to reduce the computational complexity of similar N-body type problems to $\mathcal{O}(NlogN)$ or $\mathcal{O}(N)$. Cyclic reduction \cite{SchumannSweet1976}, tree-codes \cite{LindsayKrasny2001,BarnesHut1986}, and FMM \cite{GreengardRokhlin1987} are all possibilities. However, because the velocity field calculation method is decoupled from the PDE governing vorticity advection, there is no \textit{a priori} assurance that the velocity calculated is of sufficient fidelity to ensure convergence of the overall method (let alone convergence at the order one might expect based on solely the discretization). For maximum flexibility in investigating this dependency of overall convergence on the calculated velocity field we shall eschew more efficient techniques so that we can directly control the fidelity of the velocity field.
 
 \section{Kernel Desingularization} 
-The second point to consider regarding the Biot-Savart integral is the singular nature of the exact kernel. Lagrangian point vortex methods have the benefit that the singularity and it's associated non-physical velocities occur in a relatively small region; they assume that the advective effect of the point vortex on itself is negligible. Generally, self-influence merely results in solid body rotation. This is the approach taken by early methods \cite{Point1}. While easy to implement, it results in un-physically large velocities when two point vortices approach near each other. The other issue with this approach is poor convergence and accuracy on the resulting velocity field off particle paths as described by Beale and Majda \cite{BealeMajda}.
+The second point to consider regarding the Biot-Savart integral is the singular nature of the exact kernel. Lagrangian point vortex methods have the benefit that the singularity and it's associated non-physical velocities occur in a relatively small region; they assume that the advective effect of the point vortex on itself is negligible. Generally, self-influence merely results in solid body rotation. This is the approach taken by early methods \cite{Point1}. While easy to implement, it results in large, non-physical velocities when two point vortices approach near each other. The other issue with this approach is poor convergence and accuracy of the resulting velocity field off particle paths as described by Beale and Majda \cite{BealeMajda}.
 
-One may attempt to tame the singularity  by introducing a core function $\eta(^z/_{\delta})$. Heuristically, the point vortex is now replaced by a finite size vortex blob described by $\eta(r)$, with characteristic radius $\delta$. Analytically, the point vortex is essentially a delta function; core functions are desingularized approximations that converge to the delta function as $\delta \rightarrow 0$. Traditionally the core function is convolved with the Biot-Savart kernel to yield a desingularized kernel $K_{\delta}$.
+One may attempt to desingularize the Biot-Savart kernel  by introducing a core function $\eta(^z/_{\delta})$. Heuristically, the point vortex is now replaced by a finite size vortex blob described by $\eta(r)$, with characteristic radius $\delta$. Analytically, the point vortex is a delta function; core functions are desingularized approximations that converge to the delta function as $\delta \rightarrow 0$. Traditionally the core function is convolved with the Biot-Savart kernel to yield a desingularized kernel $K_{\delta}$.
 \ben{DesingBS} K*\eta(r) = K_{\delta} \ee
 
 The choice of a core function and a characteristic radius has important implications on the accuracy and convergence of a Lagrangian point vortex method. Choosing a cutoff radius too small and there is insufficient smoothing, too large and the vorticity discretization is spatially smeared. The choice of a core function is also nuanced: good approximations of the delta function should preserve both the volume and moments of the delta function \cite{BealeMajda}.
 
-Strictly positive core functions can only preserve the first moment, those preserving more may become negative in small regions. The more moments that are preserved, the higher order the convergence of the underlying method (assuming adequate choice of cutoff radius and sufficiently smooth flow). One may preserve all moments, permitting spectral convergence, with the caveat being the resulting core function does not have compact support. This precludes the use of a tree-code of FMM.
-We present here a range of desingularized kernels that will be employed.
+Strictly positive core functions can only preserve the first moment, those preserving more may become negative in small regions. The more moments that are preserved, the higher order the convergence of the underlying method (assuming adequate choice of cutoff radius and sufficiently smooth flow). One may preserve all moments, permitting spectral convergence, with the caveat being the resulting core function does not have compact support \cite{Hald3}. This precludes the use of a tree-code of FMM. There are a wide range of desingularized kernels available, those tested in the solver are presented here.
 
 The classical choice is the Rosenhead-Moore kernel \cite{Rosenhead1930,Moore1972}. Note that strictly speaking this kernel does not satisfy convergence proofs as it does not conserve any moments. It is technically a 0th order kernel.
 \ben{RMkern} K_{RM} = \frac{1}{2 \pi} \frac{x^*-x}{|z|^2+\delta^2} \ee
@@ -170,7 +170,7 @@ these have the advantage that \textit{all} moments are conserved, but they do no
 The high-order Eulerian approach taken here means that the Biot-Savart integral diverges everywhere within any of the extended vorticity patches thanks to self-influence. The approach taken by Brown \cite{Brown2004} was to use the Rosenhead-Moore kernel, choosing a core size such that the maximum velocity occurred on the face of the finite volume unit. This can be constructed \textit{a priori} because the vorticity is taken as constant across the volume, as is typical in a FV approach. If the vorticity is spatially varying however, the choice of core size is more troublesome. This will be examined in greater detail in the next chapter.
 
 \section{Discontinuous Galerkin}
-In order to solve \eqref{VV2D} we adopt a method-of-lines approach. We will first spatially discretize the system to obtain the semi-discrete system, then we use an explicit time discretization method to march forward in time. Note that \eqref{VV2D} has the form of a scalar conservation law, with $\omega$ being the conserved quantity. The velocity field that advects the conserved quantity has been calculated by evaluation of the Biot-Savart integral for the current timestep.
+In order to solve \eqref{VV2D} we adopt a method-of-lines approach \cite{RKDG}. We will first spatially discretize the system to obtain the semi-discrete system, then we use an explicit time discretization method to march forward in time. Note that \eqref{VV2D} has the form of a scalar conservation law, with $\omega$ being the conserved quantity. The velocity field that advects the conserved quantity has been calculated by evaluation of the Biot-Savart integral for the current timestep.
 
 Our spatial discretization is at best an approximate solution to \eqref{VV2D}, that we shall denote as $\aomega(x,t)$. Some residual will remain for the approximate solution of the PDE at any time $t$
 \ben{VV2D} \frac{\partial \aomega}{\partial t} + \frac{\partial f}{\partial x_i} = R(x)\ee
@@ -195,7 +195,7 @@ To reduce the smoothness requirements on the flux, integrate the second term by 
 + f\phi_j(x) \Big|^{x_R}_{x_L} 
 - \int_{x_L}^{x_R} f(\aomega) \, \frac{d \phi_j(x)}{d x} \;dx = 0 \ee
 
-The local solution offers no way of recovering the global solution, until one realizes that the flux at the element boundaries is multiply defined between elements. The global solution is allowed to be piecewise discontinuous across boundaries, so there is no guarantee that the flux between neighboring elements would agree. To resolve this (and at the same time recover a global solution) define a numerical flux analogous to a Finite Volume Method that takes as input the vorticity at the adjacent element boundaries. We will use an upwind flux, where defining the average as $\{\!\{\omega^+\}\!\} = \frac{\omega^++\omega^-}{2}$ and the jump as $[[\omega]]=\omega^+-\omega^-$, yields
+The local solution offers no way of recovering the global solution, until one realizes that the flux at the element boundaries is multiply defined between elements. The global solution is allowed to be piecewise discontinuous across boundaries, so there is no guarantee that the flux between neighboring elements would agree. To resolve this (and at the same time recover a global solution) define a numerical flux analogous to a Finite Volume Method that takes as input the vorticity at the adjacent element boundaries. We will use an upwind flux, where defining the average as $\{\!\{\omega^+\}\!\} = \frac{\omega^++\omega^-}{2}$ and the jump as $[[\omega]]=\omega^+-\omega^-$ \cite{HestWar}, yields
 \be \hat{f}_{upwind}(x^+,x^-)=u\{\!\{\aomega\}\!\} + \frac{|u|}{2}[[\aomega]]\ee
 
 We would also like to map any element to a computational element by means of a mapping $x=g(X)$ and it's inverse $X=G(x)$. If we set the domain of our computational element to be $X \in [-1, 1]$ and the element size to be $\Delta x = x_R - x_L$, then the mapping is
@@ -488,6 +488,13 @@ One could instead choose the set of Lobatto points to avoid extrapolating the vo
 
 %
 \section{Stiffness Matrix}\label{StiffM}
+
+\begin{figure}
+\centering
+\includegraphics[width=5.5in]{VelocityLobatto.PNG}
+\caption{\label{fig:VelocityLobatto}5$^{th}$ order Lobatto velocity nodes along $x$-lines (dark circles) and $y$-lines (empty circles).}
+\end{figure}
+
 We can apply the results for the modified quadrature rule from \eqref{modQuad} to the purpose of evaluating the stiffness integral we have left unevaluated thus far. Recall that for maximum flexibility the velocity interpolation order is independent of the vorticity order. In addition the Lobatto points are chosen for the velocity to reuse the boundary velocities. At first glance it might seem actually counter productive to choose a different order or set of nodes for the velocity. To avoid needing "off-line" interpolation the velocity nodes should be co-linear with the vorticity lines. The result for a 5th order velocity and vorticity field is shown in Figure~\ref{fig:VelocityLobatto}.
 
 It would appear we actually need double the velocity evaluation points. The non-square tensor product of the Lobatto nodes with the Legendre nodes means that the $x$-line velocity nodes will never coincide with the $y$-line velocity nodes. The answer is that the velocity is evaluated component-wise. Along the $x$-line we only require $u_x$ and along the $y$-line we only require $u_y$. The different direction's line's nodes may not coincide with each other, however this doesn't pose any problems as we do not need need the other velocity component at any particular velocity node. A small caveat is that if we would like to calculate the full velocity field this must be added in as an additional post-processing step to calculate the skipped velocity components.
@@ -501,21 +508,46 @@ rearranging to obtain the rate of change of the nodal vorticity
 =\frac{2}{w_j \Delta x} \left[\mathbf{u}^T \mathbf{W}_{--j} \, \boldsymbol{\omega} - \hat{f}\ell_j \Big|^{x_R}_{x_L}\right]  \ee
 This nodal equation now describes the line's contribution to the time evolution of a particular node. This calculation is performed for all vorticity nodes on all $x$-lines and added to the rate of change of the matching vorticity nodes in the $y$-lines.
 
-\begin{figure}
-\centering
-\includegraphics[width=5.5in]{VelocityLobatto.PNG}
-\caption{\label{fig:VelocityLobatto}5$^{th}$ order Lobatto velocity nodes along $x$-lines (dark circles) and $y$-lines (empty circles).}
-\end{figure}
-
 %
 \section{Velocity Evaluation}\label{VelEval}
 It is important to note that direct pair-pair velocity evaluation has $\mathcal{O}(N^2)$ complexity; it is well known that methods exist that can reduce this to $\mathcal{O}(N\text{log}N)$ or even $\mathcal{O}(N)$ \cite{SchumannSweet1976,LindsayKrasny2001,BarnesHut1986,GreengardRokhlin1987}. However for ease of implementation and to eliminate the effects of as much approximation error as possible on validation, the velocity is evaluated directly at each desired velocity point by means of the desingularized Biot-Savart integral (Eqn. \ref{DesingBS}). 
 
 The velocity at a particular node is calculated by summing the net effect of each masked source element. A loop steps through each source element and adds it's contribution to all velocity nodes. The Biot-Savart integral is done via a 2D tensor product Gauss-Legendre quadrature of order equal to the vorticity field with quadrature points collocated at the vorticity interpolation points. 
-\be u(x^*)= \sum_{E=1}^{N_{mask}} [w_{pre}]^TK_{\delta}(x^*-[x_E]) \ee
+\be u(x^*)= \sum_{E=1}^{N_{mask}} [\omega_{pre}]^TK_{\delta}(x^*-[x_E]) \ee
 \be \omega_{pre} = [\omega(x_E)].*[w_i \otimes w_j]\ee
-Some liberties have been taken with notation: items in brackets are column vectors and $.*$ indicates element-wise multiplication. $\omega_{pre}$ is the vorticity for each element in the mask pre-multiplied by the outer product of the two tensor direction's 1D quadrature weights. As a given mask element appears as a source for all velocity evaluation points, performing the multiplication by the quadrature weights and caching realizes significant savings. This technique combined with the summation of all quadrature points in a  particular source element by a vector-vector product realizes a significant speed-up: over 2000\% over the natural vector-(matrix-matrix)-vector multiplication, $[w_i]^T(\omega.*K_{\delta})[w_j]$ for the workstation used.
+Some liberties have been taken with notation: items in brackets are column vectors and $.*$ indicates element-wise multiplication. $\omega_{pre}$ is the vorticity for each element in the mask pre-multiplied by the outer product of the two tensor direction's 1D quadrature weights. As a given mask element appears as a source for all velocity evaluation points, performing the multiplication by the quadrature weights and caching realizes significant savings. This technique combined with the summation of all quadrature points in a  particular source element by a vector-vector product realizes a significant speed-up: over 2000\% over the more natural but slower vector-(matrix-matrix)-vector multiplication, $[w_i]^T(\omega.*K_{\delta})[w_j]$.
 
+\begin{figure}
+\centering
+\includegraphics[width=5.5in]{GlobalKernel.PNG}
+\caption{\label{fig:GlobalKernel}The "global" kernel matrix showing (R)eference source and actual (S)ource, the upper left quadrant is the actual full domain, the selected region with respect to (R) selects the correct values of the kernel for (S).}
+\end{figure}
+
+\subsection{Biot-Savart Kernel Calculations}
+The majority of the cost of the present solver results from the assembly of the boundary kernel values from the generalized template. One is presented with three options: calculate a new set of kernel values for each source element, form a "global" matrix of kernel values that one maps to the particular source element under consideration, or directly calculating and storing kernel values for every source-node pair.
+
+The first choice is the most direct, but also the slowest. It is bottlenecked by computational cost; the number of operations to form the kernel actually exceeds those needed to evaluate the integral. The third method is the fastest, but bound by memory constraints which scale as $Np^4 K^4$. Even a modest 5th order velocity method with 20x20 elements (~15k DOF) would require 1.66GB of memory to store: kernel values per target node x number of targets = $[30^2(6^2)][30^2(6^2)]\times$8bytes/double float .
+
+The second method is the one currently used in the code. The global domain is reflected about both axes for a central element and the kernel values are calculated for all elements in relation to the reference source. Depending on where the actual source element is in the true domain determines what portion of the global domain is selected with respect to the reference element, see Figure~\ref{fig:GlobalKernel}. This is implemented in the solver as
+
+\singlespacing
+\begin{lstlisting}[language=Matlab]
+kernel_xB= ...
+   gkernel_xB(:, [1:Np*K(2)] +Np*(K(2)-Enumy(Src)),...
+   [1:K(1)+1] +(K(1)-Enumx(Src)) );
+kernel_yB=...
+    gkernel_yB(:, [1:Np*K(1)] +Np*(K(1)-Enumx(Src)),...
+   [1:K(2)+1] +(K(2)-Enumy(Src)) );
+\end{lstlisting}
+\doublespacing
+
+where K(x,y) is the number of elements, Np is the number of interpolation points along one direction, Enumx/Enumy return the x and y directional numbering of Src (the global element number), and gkernel\_xB/gkernel\_yB is the generalized kernel values that contain x and y reflections of the domain.
+
+This realizes significant computational savings from not having to repeatedly recalculate the kernel values, however it is memory access bottlenecked. Repeatedly selecting and manipulating non-contiguous blocks of memory accounts for about 60\% of CPU time according to the profiler. Even being careful to arrange as much data column-major as possible only delays the problem.
+
+This also means otherwise "empty" elements affect performance by further fragmenting the global kernel matrix. At some point the sparseness of the domain is sufficient that the recalculation of the kernel for each source outperforms an overly fragmented global matrix. Note that the memory bottleneck limitation is not an intrinsic property of the underlying method itself, but rather a consequence of the solver implementation and Matlab's underlying memory model.
+
+\subsection{Convergence}
 For the far field canonical Gauss-Legendre quadrature performs as expected, with excellent convergence. However for elements directly neighboring the source element, as well as the source element itself, the nearly singular nature of the integral poses convergence problems for the quadrature \cite{Strain1996}. As an illustrating point consider the data in Tables \ref{table:SelfBSQuad} and \ref{table:2BSQuad}. Compare the relative error for the computed velocities due to self-influence and a source element just two elements away. The difference in the relative error is approximately 5 orders of magnitude. Furthermore the observed error in the two element away case is mostly discretization error: the same integration parameters performed with a dummy kernel of $K=1$ had a relative error of 5E-10, within an order of magnitude of the actual test case.
 
 \begin{table}
@@ -546,27 +578,25 @@ $GL(x_6)$    & 5.08E-08 & 6.38E-08 & 5.97E-08 & 9.02E-09 & 3.92E-08 & 5.40E-08
 \end{tabular}
 \end{table}
 
-The weighting function for the Legendre polynomials is simply $w_{Leg}(x)=1$. As such, the product of the kernel and the vorticity near the source element is poorly interpolated by a polynomial. To illustrate consider the same setup as the one used in the tabulated velocity errors comparison: plots of the true product of the vorticity and $K_{WL}$, it's matching interpolation, and the error between them are plotted in Figures \ref{fig:wKtrue},\ref{fig:wKinterp},\ref{fig:wKerror} respectively.
-
-Ideally one would use a weighting function of a form similar to the singular portion of the kernel to form a new orthogonal basis, but here one is limited by the tensor basis. More freedom is required in the interpolation points to provide adequate leeway to generate desirable quadrature rules. The generation of general multivariable interpolation and quadrature bases is an area of active and relatively recent effort \cite{Gasca2000,Xu2012,Gautschi2013}.
-
-At first one might think that the predominant bottleneck in the scaling of the velocity evaluation is simply the evaluation of the Biot-Savart integral. While this may be the case in other codes, or other workstation setups, this actually only accounts for typically less than half the cost. The majority of the cost actually results from the assembly of the kernel values. One is presented with three options: calculate a new set of kernel values for each source element, form a "global" matrix of kernel values that one maps to the particular source element under consideration, or directly calculating and storing kernel values for every source-node pair.
-
-The first choice is the most direct, but also the slowest. It is bottlenecked by computational cost; the number of operations to form the kernel actually exceeds those needed to evaluate the integral. The third method is the fastest, but bound by memory constraints which scale as $Np^4 K^4$. Even a modest 5th order velocity method with 20x20 elements (~15k DOF) would require 1.8Gb of memory to store.
-
-The second method is the one currently used in the code. The global domain is reflected about both axes for a central element and the kernel values are calculated for all elements in relation to the reference source. Depending on where the actual source element is in the true domain determines what portion of the "global" domain is selected with respect to the reference element, see Figure~\ref{fig:GlobalKernel}. This realizes significant computational savings from not having to repeatedly recalculate the kernel values, however it is memory access bottlenecked. Repeatedly selecting and manipulating non-contiguous blocks of memory can be slow. Even being careful to arrange as much data column-major as possible only delays the problem.
-
-This also means otherwise "empty" elements affect performance by further fragmenting the global kernel matrix. At some point the sparseness of the domain is sufficient that the recalculation of the kernel for each source outperforms an overly fragmented global matrix. A hybrid method that uses as much memory as reasonable to store kernel values for the elements with the greatest vorticity, and calculates all others on-the-fly would be the most efficient use of resources and was considered but development time did not permit it's construction. Note that the memory bottleneck limitation is not an intrinsic property of the underlying method itself, but rather a consequence of the solver implementation and Matlab's underlying memory model.
+The weighting function for the Legendre polynomials is simply $w_{Leg}(x)=1$. As such, the product of the $K_{\delta}$ and the vorticity near the source element is poorly interpolated by a polynomial. To illustrate consider the same setup as the one used in the tabulated velocity errors comparison: plots of the true product of the vorticity and $K_{WL}$, it's matching interpolation, and the error between them are plotted in Figures \ref{fig:wKtrue}, \ref{fig:wKinterp}, \ref{fig:wKerror} respectively.
 
 \begin{figure}
 \centering
-\includegraphics[width=5.5in]{GlobalKernel.PNG}
-\caption{\label{fig:GlobalKernel}The "global" kernel matrix showing (R)eference source and actual (S)ource, the upper left quadrant is the actual full domain, the selected region with respect to (R) selects the correct values of the kernel for (S).}
+\includegraphics[width=5.5in]{wKtrue.PNG}
+\caption{\label{fig:wKtrue}True product of example $\omega$ and $K_{\delta}$.}
+\end{figure}
+\begin{figure}
+\centering
+\includegraphics[width=5.5in]{wKinterp.PNG}
+\caption{\label{fig:wKinterp}Interpolated product of example $\omega$ and $K_{\delta}$.}
+\end{figure}
+\begin{figure}
+\centering
+\includegraphics[width=5.5in]{wKerror.PNG}
+\caption{\label{fig:wKerror}Error between true and interpolated products.}
 \end{figure}
 
-The tensor product basis used for the vorticity can be exploited for computational and ease-of-implementation gains. The tensor product means that the 2D integral of the vorticity times the Biot-Savart kernel can be reduced by a matrix-vector and vector-vector product by pre-multiplying the vorticity of a source by the outer product of the Gauss-Legendre weights component-wise, which is then reused for each kernel-vorticity integration.
-\be \int \omega \times K \;dx \approx \boldsymbol{w}^T(\boldsymbol{\omega}_E.*\boldsymbol{K}) \boldsymbol{w} \rightarrow (\boldsymbol{ww}^T.*\boldsymbol{\omega})\boldsymbol{K} \ee
-where ".*" indicates element-wise multiplication per Matlab convention. It's worth noting that the pre-multiplied product and the kernel are reshaped to be row and column vectors respectively. If there are many kernels to be integrated for a particular vorticity source the computational savings are appreciable.
+Ideally one would use a weighting function of a form similar to the singular portion of the kernel to form a new orthogonal basis, but here one is limited by the tensor basis. More freedom is required in the interpolation points to provide adequate leeway to generate desirable quadrature rules. The generation of general multivariable interpolation and quadrature bases is an area of active and relatively recent effort \cite{Gasca2000,Xu2012,Gautschi2013}.
 
 %
 \section{Vortex Sparseness}
@@ -574,17 +604,33 @@ One of the advantages of DG as an advection scheme is the compact local support.
 
 From a vorticity-velocity perspective elements with zero vorticity or boundary flux driven "noise" are unimportant, even if they are important from a consistency standpoint for the DG part of the code. Therefore a threshold value can be specified, elements with total vorticity less that the threshold value are ignored, and only those elements above the threshold are put in a mask. The masked elements are the ones considered as sources for the velocity evaluation. Additionally, only the boundary velocities for these unimportant elements are calculated and a reduced velocity order stiffness term is calculated for them.
 
-The current state of the solver is bottlenecked by the velocity evaluation, so although some savings would be realized by maintaining true vorticity domain sparseness, the result is that it has little impact on the overall speed of the solver. The unmasked elements have only a marginal impact on the cost of the velocity evaluations. However empty elements do have one major effect on solver performance, this will be discussed in the next section.
-
-%
-\section{Reduced Order Velocity at the Far-field}
-The flexibility permitted by the modified quadrature matrix allows a choice of velocity order independent of the vorticity order. A reduced velocity order reduces the runtime of the solver significantly, but this comes with some potentially severe drawbacks as will be shown. The reduced order velocity field is most easily applied to unmasked elements, but can also be extended to far-field elements. The stiffness integral can be broken up into low and high order pieces with self, neighboring, and nearby elements evaluated at high order, and slowly changing far-field elements at reduced velocity order.
-
-In some senses a reduced order far-field component is an analogue to the cluster-cluster interactions of a fast multipole method. The implementation of the reduced order far-field evaluations is deferred to a later extension of the code that will fully implement a FMM-like evaluation.
+The current state of the solver is bottlenecked by the velocity evaluation, so although some savings would be realized by maintaining true vorticity domain sparseness, the result is that it has little impact on the overall solution time. The unmasked elements have only a marginal impact on the cost of the velocity evaluations.
 
 %
 \section{Explicit Time-Stepping}\label{TimeStep}
-With the semi-discrete system formed, one must now choose how to discretize in time. For simplicity an explicit time-stepping method will be used. The two chief categories are multi-step and multi-stage methods, typically either Adams-Bashforth or Runge-Kutta respectively. It is known that Forward Euler and AB2 are unstable for DG with an upwind flux due to it's dissipative nature. The choices permitted then are Runge-Kutta or a higher-order Adams-Bashforth.
+With the semi-discrete system formed, one must now choose how to discretize in time. For simplicity an explicit time-stepping method will be used. The diagonalized mass matrix created in \S\ref{MassM} permits the compact rearrangement of \eqref{DGJoshTemp2} to solve explicitly for the nodal rate of change of vorticity due to each of the lines that intersect the node. The contribution from each line is added and the total rate of change is used to advance stagewise within the RK routine:
+
+\singlespacing
+\begin{lstlisting}
+for t=0:delt:EndTime %Step
+    for i=1:nS %Stage
+        (Velocity calculations)
+        (semi-discrete calculations for advection)
+        wx_dt= permute(Stiff_x-SurfFlux_x,[4 1 3 2]);
+        wy_dt= reshape(reshape(...
+	Stiff_y-SurfFlux_y,K(2),[])',Np,1,[]);
+        
+        k2= RKa(i)*k2 + delt*(wx_dt+wy_dt);
+        wx= wx+RKb(i)*k2;
+        wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]);
+    end
+end
+\end{lstlisting}
+\doublespacing
+
+where delt is the timestep, nS is the number of stage RK method chosen, RKa and RKb are RK specific coefficients, Stiff\_x/Stiff\_y are the nodal stiffness values, SurfFlux\_x/SurffFlux\_y are the nodal surface flux values, k2 is the low-storage RK state variable, and wx/wy are line-wise vorticity state variables
+
+The two chief categories are multi-step and multi-stage methods, typically either Adams-Bashforth or Runge-Kutta respectively. It is known that Forward Euler and AB2 are unstable for DG with an upwind flux due to it's dissipative nature \cite{Reid}. The choices permitted then are Runge-Kutta or a higher-order Adams-Bashforth.
 
 The recent thesis work of Atcheson \cite{Reid} presents an excellent overview of the optimal choice of time-stepping algorithm for a DG operator. In particular it was shown that Runge-Kutta methods outperformed AB3 and that all higher-order Adams-Bashforth schemes required far too restrictive of a time-step to satisfy the CFL condition to be efficient. Out of all the Runge-Kutta schemes considered \cite{Toulorge} one of the competitive options was the "NRK14C" scheme developed by Niegemann et al. \cite{Niegemann}. This is an optimized 4th order, 14 stage low storage scheme of similar structure to other 2N style schemes \cite{Carpenter}.
 
@@ -594,7 +640,9 @@ There is one further choice to be made regarding time-stepping: where to include
 
 Of course the time discretization error of the velocity field will be increased, but the runtime of the resultant method will be an order of magnitude faster. If the CFL condition is stringent enough to necessitate a small time-step compared to the evolution rate of the velocity, the velocity evaluation is moved outside of the stage loop. The effect on the overall convergence of the method is important to consider when making this choice.
 
-%
+
+%------------------------------------
+\chapter{Results}
 \section{Validation and Convergence of Proposed Methods}
 \subsection{Perlmann: Stationary Vortex}
 Of primary interest in the development of a new method is validation of it with common test cases, as well as an evaluation of convergence. Perlmann's 7th order polynomial was the first case studied \cite{Perlmann1985}. The intial condition is a stationary vortex that permits an analytical solution to compare against. The initial vorticity distribution is of the form
@@ -629,13 +677,8 @@ The contour levels are specified in the resultant figure as 0.25, 0.50, 1, 2, ..
 \subsection{Other}
 Analytical convergence rate of the method at various order vorticity fields, velocity fields, velocity evaluation step/stage-wise, effective core sizes, and long time integrations also take advantage of the analytical solution available from the Perlmann test case. The elliptical patch and system of interacting  patches also receive a qualitative assessment of the convergence rate, and their dependence on the test parameters.
 
-%------------------------------------
-\chapter{Results}
 \section{Validation}
 \subsection{Perlmann: Stationary Vortex}
-Although it is expected that in the stationary vortex case the choice of stage or step-wise velocity evaluation shouldn't matter, to minimize any sources of error or confounding factors a stage-wise evaluation was used during validation studies. To fully validate the method the largest combination of order and number of elements was chosen that still permitted a reasonable runtime to 48 seconds. This is close to 4 full revolutions, where the period is $T_p = \frac{4 \pi}{\omega_{max}}$. This test is denoted P1 and the test conditions (along with all other test cases) are tabulated in \ref{table:TestVars}. All plots likewise are marked with the test case number.
-
-To examine the long-term behavior of the method the $L^2$ norm of the error \ref{fig:L2P1} as well as the dissipation of the total vorticity in the domain \ref{fig:wtotP1} are plotted through the course of the vortex evolution. The final surface plot and contour plot can be seen in Figures \ref{fig:P1surf} and \ref{fig:P1cont} respectively.
 
 \subsection{Strain: Interacting Vortex Patches}
 
@@ -769,6 +812,8 @@ Lesaint, P., and Pierre-Arnaud Raviart. On a finite element method for solving t
 P.O. Persson. A Sparse and High-Order Accurate Line-Based Discontinuous Galerkin Method for Unstructured Meshes. J. Comp. Phys., Vol. 233, pp. 414-429, Jan 2013.
 \bibitem{HestWar}
 Hesthaven, Jan S., and Tim Warburton. Nodal discontinuous Galerkin methods: algorithms, analysis, and applications. Vol. 54. Springer Science \& Business Media, 2007.
+\bibitem{RKDG}
+Cockburn, Bernardo, and Chi-Wang Shu. TVB Runge-Kutta local projection discontinuous Galerkin finite element method for conservation laws. II. General framework. Mathematics of Computation 52.186 (1989): 411-435.
 %Important vortex papers
 \bibitem{HaldReview}
 Hald, Ole H. Convergence of vortex methods. Vortex methods and vortex motion. Vol. 1. 1991.
