@@ -2,13 +2,13 @@ clear all
 clc
 
 it=1;
-tests=[3:2:13];
+tests=[1:7];
 for i=tests;
     data{it}=num2str(i);
     it=it+1;
 end
-post='GDpt4ps2';
-pre= 'P4_';
+post='GD';
+pre= 'WL9P6_';
 
 for runs=1:length(data)
     load([pre,data{runs},post,'.mat'])
@@ -37,6 +37,6 @@ set(hl, 'Interpreter', 'none')
 figure(2)
 hold on
 for i=1:size(L2,2)
-    C(i,:)=polyfit(log(tests),log(L2(:,i))',1);
+    C(i,:)=polyfit(log10(tests),log10(L2(:,i))',1);
 end
 plot(tt(1,:),C(:,1))

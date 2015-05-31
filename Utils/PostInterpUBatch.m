@@ -3,15 +3,15 @@ clc
 set(0, 'DefaulttextInterpreter', 'none');
 
 it=1;
-tests=30;
+tests=6:2:14;
 for i=tests;
     data{it}=num2str(i);
     it=it+1;
 end
-post='GDpt4sg';
+post='GDpt85ps2';
 pre= 'K4_';
 
-load('K4_48GDpt8ps2M.mat')
+load('K4_30GDpt4sg.mat')
 N=setup(2); M=setup(3); del=setup(4); deltE=setup(5); K=setup(7:8); B=setup(9:12);
 run('CalcedParams'); NpE=Np; QxE=Qx; KE=K(1); delXE=delX;
 wxE=permute(reshape(permute(wxt(:,1,Estreamx,:),[1 3 2 4]),Np,Np,K(2),K(1),[]),[2 1 3 4 5]);
@@ -24,6 +24,8 @@ interp_g=@(x,y,G) LagE(x,1:Np)'*(G*LagE(y,1:Np));
 %--------
 
 for runs=1:length(data)
+    
+    
 load([pre,data{runs},post,'.mat'])
 N=setup(2); M=setup(3); del=setup(4); deltA=setup(5); K=setup(7:8); B=setup(9:12);
 run('CalcedParams'); NpA=Np; QxA=Qx; KA=K(1); delXA=delX;
@@ -44,13 +46,8 @@ end
 IpE= 1/(2*IdE) : 1/IdE : 1-1/(2*IdE);
 IpA= 1/(2*IdA) : 1/IdA : 1-1/(2*IdA);
 
-LxE= LagE(IpE,1:NpE)';
-LyE= LagE(IpE,1:NpE);
-LxA= LagA(IpA,1:NpA)';
-LyA= LagA(IpA,1:NpA);
-
-freqE= 7;%lcm(deltA*1000,deltE*1000)/(deltE*1000);
-freqA= 4;%lcm(deltA*1000,deltE*1000)/(deltA*1000);
+freqE= lcm(deltA*1000,deltE*1000)/(deltE*1000);
+freqA= lcm(deltA*1000,deltE*1000)/(deltA*1000);
 tratio= freqA/freqE;
 endtE=size(wxE,5);
 endtA=size(wxA,5);

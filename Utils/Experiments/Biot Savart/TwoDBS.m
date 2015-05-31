@@ -1,7 +1,7 @@
 clear all
-N=4;
+N=7;
 f=7.875/48;%Size of element
-del=.4*(7.875/48);
+del=.3*(7.875/48);
 
 f=f/2;
 
@@ -41,11 +41,11 @@ Tx=0*f+nd3(nx); %nd3
         Rsq=@(x,y) (x-Tx).^2+(y-Ty).^2;
         %k=@(x,y) (1/(2*pi))*(y-Ty)./((x-Tx).^2+(y-Ty).^2+del^2).^(3/2); %RM
         %k=@(x,y) (1/(2*pi))*( (y-Ty).*(Rsq(x,y)+ (2)*del^2) )./(Rsq(x,y)+del^2).^(2); %WL
-        %k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1-exp(-Rsq(x,y)/del^2)); %Gaussian
+        k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1-exp(-Rsq(x,y)/del^2)); %Gaussian
         %k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1-(1-(Rsq(x,y)/del^2)).*exp(-Rsq(x,y)/del^2)); %SG
         %k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1-(1-(2*Rsq(x,y)/del^2+0.5*Rsq(x,y).^2/del^4)).*exp(-Rsq(x,y)/del^2)); %SG6
         %k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1-besselj(0,sqrt(Rsq(x,y))/del)); %PS
-        k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1- (8./(45*Rsq(x,y)/del^2)).*(4*besselj(2,4*sqrt(Rsq(x,y))/del)-5*besselj(2,2*sqrt(Rsq(x,y))/del)+besselj(2,sqrt(Rsq(x,y))/del))); %PS2
+        %k=@(x,y) (1./(2*pi*Rsq(x,y))).*(1- (8./(45*Rsq(x,y)/del^2)).*(4*besselj(2,4*sqrt(Rsq(x,y))/del)-5*besselj(2,2*sqrt(Rsq(x,y))/del)+besselj(2,sqrt(Rsq(x,y))/del))); %PS2
         K=k(xx,yy);
         K2=k(xx2,yy2);
         

@@ -183,9 +183,9 @@ In \cite{BealeMajda} Beale and Majda extend the super-gaussian core function to 
 where $Q^{(m)}(r)$ are Laguerre polynomials of $r^2$ normalized to set the first term to 1.
 
 The final set of kernels used are the spectrally convergent set derived from Bessel functions of the first kind. The simplest appears in \cite{WL} as
-\ben{PSkern}  K_{spectral_0}= \frac{z}{2 \pi |z|^2} (1-J_0(\frac{z}{\delta})) \ee
+\ben{PSkern0}  K_{spectral_0}= \frac{z}{2 \pi |z|^2} (1-J_0(\frac{z}{\delta})) \ee
 with a more involved alternative from \cite{HaldReview}
-\ben{PSkern}  K_{spectral_2}= \frac{z}{2 \pi |z|^2} \left[1-\frac{8}{45(z/\delta)^2}(4J_2(\frac{4z}{\delta})-5J_2(\frac{2z}{\delta})+J_2(\frac{z}{\delta}))\right] \ee
+\ben{PSkern2}  K_{spectral_2}= \frac{z}{2 \pi |z|^2} \left[1-\frac{8}{45(z/\delta)^2}(4J_2(\frac{4z}{\delta})-5J_2(\frac{2z}{\delta})+J_2(\frac{z}{\delta}))\right] \ee
 these have the advantage that \textit{all} moments are conserved, but they do not have compact support. They are also quite expensive to evaluate due to the Bessel evaluations. For a Lagrangian method this is a serious disadvantage (especially if one wishes to employ a FMM); however for an Eulerian method the vorticity solution points are fixed, so the kernel values need only be calculated once and re-used.
 
 The high-order Eulerian approach taken here means that the Biot-Savart integral diverges everywhere within any of the extended vorticity patches thanks to self-influence. The approach taken by Brown \cite{Brown2004} was to use the Rosenhead-Moore kernel, choosing a core size such that the maximum velocity occurred on the face of the finite volume unit. This can be constructed \textit{a priori} because the vorticity is taken as constant across the volume, as is typical in a FV approach. If the vorticity is spatially varying however, the choice of core size is more troublesome. This will be examined in greater detail in the next chapter.
@@ -664,12 +664,22 @@ Of course the time discretization error of the velocity field will be increased,
 %------------------------------------
 \chapter{Results}
 \section{Validating Test Cases}
-Of primary interest in the development of a new method is validation of it with common test cases, as well as an evaluation of convergence. The following test cases are evaluated and examined for a range of items of interest: behavior of Biot-Savart kernel choice and cutoff radius, stage vs step-wise velocity evaluation, effect of velocity order, convergence rate, $L^2$ error, and appropriate conservation of vorticity.
+Of primary interest in the development of a new method is validation of it with common test cases, as well as an evaluation of convergence. The following test cases are evaluated and examined for a range of items of interest: behavior of Biot-Savart kernel choice and cutoff radius, stage vs step-wise velocity evaluation, effect of velocity order, convergence rate of vorticity and velocity, $L^2$ error, and appropriate conservation of vorticity and linear impulse.
 
 \subsection{Perlmann: Stationary Vortex}
 Perlmann's 7th order polynomial was the first case studied \cite{Perlmann1985}. The intial condition is a stationary vortex that permits an analytical solution to compare against. The initial vorticity distribution is of the form:
-\be \omega(z)=(1-|z|^2)^7, \; |z|\leq 1  \quad \omega(z)=0, \;|z|>1 \quad z^2=x^2+y^2 \ee
-and is invariant with time. This test case is particularly useful as the availability of an analytical solution allows an accurate assessment of the $L^2$ error of the computed solution.
+\ben{PerlW} \omega(z)=(1-|z|^2)^7, \; |z|\leq 1  \quad \omega(z)=0, \;|z|>1 \quad z^2=x^2+y^2 \ee
+and the corresponding velocity field is:
+\ben{PerlU} u(z,t)=f(|z|)\binom{y}{-x} \ee
+where
+\[
+f(|z|)=
+\begin{cases}
+    -\frac{1}{16|z|^2}(1-(1-|z|^2)^8)	& |z| \leq 1\\
+    -\frac{1}{16|z|^2} 			& |z|>1
+\end{cases}
+\]
+and are invariant with time. This test case is particularly useful as the availability of an analytical solution allows an accurate assessment of the $L^2$ error of the computed solution. Having a analytical solution also permits the full investigation of various methodology choices; a range of combinations of method parameters can be experimented with to empirically select reasonable choices for the de-singularized Biot-Savart kernel type, cutoff radius, stage vs stepwise velocity evaluation, and the approximation order of the velocity with respect to the vorticity approximation order.
 
 \subsection{Strain: Interacting Vortex Patches}
 Strain's system of interacting random vortex patches \cite{Strain1996} forms the next validation case. Specific initial conditions are specified for each of the vortex patches in Table \ref{table:StrainTable} with the overall system consisting of the linear superposition of each patch
@@ -699,10 +709,12 @@ however the cases tested were actually elliptical, to accommodate this the initi
 The contour levels are specified in the resultant figure as 0.25, 0.50, 1, 2, ..., 20; these levels are used in the current code's resultant plot for direct comparison.
 
 This test case also has several relevant diagnostic features. The elliptical distribution of the vortex rotates creates weak filamentary structures that are important to properly resolve and accurately advect as they later collide with the main vortex body. Additionally, the initial profile of the vortex has no continuous derivatives at the transition from the vortex core to the surrounding fluid which provides a challenging test for the polynomial basis functions.
-\newpage
+
 %
 \section{Perlmann: Stationary Vortex}
 \subsection{Comparison of Biot-Savart Kernel Effects}
+The first method choice examined is the de-singularized Biot-Savart kernel, with Eqns.\,\eqref{RMkern}, \eqref{SGkern}, \eqref{PSkern0}, and \eqref{PSkern2} tested. It is important to determine the kernel's effect on the order of convergence of the vorticity and velocity.
+
 \newpage
 \subsection{Cutoff Radius Effects}
 \newpage.

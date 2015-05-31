@@ -2,7 +2,6 @@ wxt(:,:,:,itt)=wx;
 tt(itt)=t;
 %surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
 %[-[.831,.696,.563,.43,.3,.168,.032],0.099,.227,.364]
-figure(1)
 contour(wxm,wym,reshape(wx,Np*K(1),Np*K(2))',PlotInt,'linewidth',1);
 axis equal
 axis(B)
@@ -32,4 +31,7 @@ if or(any(wx>max(1,10*zmax)),any(wx<min(-1,10*zmin)))
     beep;pause(0.1); beep;
     fprintf('Solution divergence may have occured, type "return" to continue anyway or "dbstop" to eject...\n')
     keyboard
+end
+if abs(sum(reshape(wx-wxtCOMP,[],1)))<.01
+    fprintf('HIT! t=%d',itt)
 end
