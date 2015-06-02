@@ -8,10 +8,10 @@ for i=tests;
     data{it}=num2str(i);
     it=it+1;
 end
-post='GDpt85ps2_24';
+post='GDpt85ps2';
 pre= 'K4_';
 
-load('K4_30GDpt4sg_24.mat')
+load('K4_30GDpt4sg.mat')
 N=setup(2); M=setup(3); del=setup(4); deltE=setup(5); K=setup(7:8); B=setup(9:12);
 run('CalcedParams'); NpE=Np; QxE=Qx; KE=K(1); delXE=delX;
 wxE=permute(reshape(permute(wxt(:,1,Estreamx,:),[1 3 2 4]),Np,Np,K(2),K(1),[]),[2 1 3 4 5]);
@@ -24,6 +24,8 @@ interp_g=@(x,y,G) LagE(x,1:Np)'*(G*LagE(y,1:Np));
 %--------
 
 for runs=1:length(data)
+    
+    
 load([pre,data{runs},post,'.mat'])
 N=setup(2); M=setup(3); del=setup(4); deltA=setup(5); K=setup(7:8); B=setup(9:12);
 run('CalcedParams'); NpA=Np; QxA=Qx; KA=K(1); delXA=delX;
@@ -44,13 +46,8 @@ end
 IpE= 1/(2*IdE) : 1/IdE : 1-1/(2*IdE);
 IpA= 1/(2*IdA) : 1/IdA : 1-1/(2*IdA);
 
-LxE= LagE(IpE,1:NpE)';
-LyE= LagE(IpE,1:NpE);
-LxA= LagA(IpA,1:NpA)';
-LyA= LagA(IpA,1:NpA);
-
-freqE= 2;%lcm(deltA*1000,deltE*1000)/(deltE*1000);
-freqA= 1;%lcm(deltA*1000,deltE*1000)/(deltA*1000);
+freqE= lcm(deltA*1000,deltE*1000)/(deltE*1000);
+freqA= lcm(deltA*1000,deltE*1000)/(deltA*1000);
 tratio= freqA/freqE;
 endtE=size(wxE,5);
 endtA=size(wxA,5);
@@ -65,7 +62,6 @@ for t=1:freqE:endtE
     wxIE= permute(mtimesx(LxE, mtimesx( wxE(:,:,:,:,t),LyE )),[1 3 2 4]);
 
     L2(runs,it)= sqrt(((delXE/(B(1)-B(2)))/IdE)^2*sum((wxIE(:)-wxIA(:)).^2));
-    L2d(runs,it)= sqrt(((delXE/(B(1)-B(2)))/IdE)^2*sum(((wxIE(:)-wxIA(:))/20).^2));
     %L1(runs,it)= (((delXE/(B(1)-B(2)))/IdE)^2*sum(abs(wxIE(:)-wxIA(:))));
     tt(runs,it)= deltE*(t-1);
     waitbar(t/endtE,h,sprintf('%s: %i',[pre,data{runs},post],floor((endtE-t)*toc/t)))
@@ -81,10 +77,10 @@ bvals= 0.5*mod((1:length(data))-1,2);
 figure(1)
 hold on
 for runs= 1:length(data)
-    hp(runs)= plot(tt(runs,1:1:end),(L2d(runs,1:1:end)),'-k');%'Color',[rvals(runs), gvals(runs),bvals(runs)]);
+    hp(runs)= plot(tt(runs,:),L2(runs,:),'Color',[rvals(runs), gvals(runs),bvals(runs)]);
 end
 hl=legend(hp,data,'Location','northwest');
-set(hl, 'Interpreter', 'tex')
+set(hl, 'Interpreter', 'none')
 
 set(0, 'DefaulttextInterpreter', 'tex');
 
@@ -94,7 +90,7 @@ for i=1:size(L2,2)
     C2(i,:)=polyfit(log(tests),log(L2(:,i))',1);
     %C1(i,:)=polyfit(log(tests),log(L1(:,i))',1);
 end
-plot(tt(1,:),C2(:,1),'--k')
+plot(tt(1,:),C2(:,1))
 %plot(tt(1,:),C1(:,1),'r')
 
 % endt=1+round((size(wxE,5)-1)/5);

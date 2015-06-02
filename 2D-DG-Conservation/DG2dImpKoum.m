@@ -9,29 +9,29 @@ close all
 clear all
 clc
 
-tests=48;
+tests=12;
 
 for yam=1:numel(tests)
     clearvars wxt tt
-    
-filename=['K4_',num2str(tests(yam)),'GDpt8ps2J2.mat'];
+
+filename=['K4_',num2str(tests(yam)),'GDpt85sg_24.mat'];
 saveQ=1;
 %---Global domain initialization (parameters)------------------------------
 B= 2.6*[-1 1 -1 1];           %left, right, bottom, top
 K= [tests(yam) tests(yam)];               %Num elements along x,y
 %Solver parameters
-delt= 1/(48*3.5);                            %Timestep
+delt= 1/48;                            %Timestep
 N= 4;                               %Local vorticity poly order
 M= 4;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=50*(48^2/prod(K))*1E-9;
-del=.8*((B(2)-B(1))/K(1));
-EndTime=2.5;
+del=.85*((B(2)-B(1))/K(1));
+EndTime=24;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
 KernelType='PS2';
 NearRange=ceil(K(1)/2);
-TestCases=0;
+TestCases=9;
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
 PlotInt=[.25,.5,[1:20]];
 
@@ -124,3 +124,4 @@ end
 setup(end+1)=toc
 if saveQ; save(filename,'wxt','setup'); end
 end
+beep;pause(0.1);beep;pause(0.1);beep

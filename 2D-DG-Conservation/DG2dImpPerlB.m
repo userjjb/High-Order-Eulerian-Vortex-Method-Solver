@@ -9,31 +9,31 @@ close all
 clear all
 clc
 
-tests=8:2:16;
+tests=3:2:13;
 
 for yam=1:numel(tests)
     clearvars wxt tt
     
-filename=['SC6_',num2str(tests(yam)),'GDpt5ps2.mat'];
+filename=['PS24P3_',num2str(tests(yam)),'GD.mat'];
 saveQ=1;
 %---Global domain initialization (parameters)------------------------------
-B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
+B= 1.1*[-1 1 -1 1];           %left, right, bottom, top
 K= [tests(yam) tests(yam)];               %Num elements along x,y
 %Solver parameters
-delt= .32;                            %Timestep
-N= 6;                               %Local vorticity poly order
-M= 6;                               %Local velocity poly order
+delt= .5;                            %Timestep
+del=.4*((B(2)-B(1))/K(1));
+N= 3;                               %Local vorticity poly order
+M= 3;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1*(48^2/prod(K))*1E-9;
-del=.5*((B(2)-B(1))/K(1));
-EndTime=28;
+w_thresh=0;%1*(48^2/prod(K))*1E-9;
+EndTime=20;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
 KernelType='PS2';
-NearRange=ceil(K(1)/3);
-TestCases=5:8;
+NearRange=ceil(K(1)/2);
+TestCases=3;
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-PlotInt=[-[.831,.696,.563,.43,.3,.168,.032],0.099,.227,.364];
+PlotInt=[10.^[-15:2:-1],0.02:.1:1,.98];
 
 %Calculate all derived solver parameters (node/boundary/element positions
 %and numbering, discrete norm, and pre-allocate vorticity/velocity vars
@@ -49,12 +49,10 @@ for t=0:delt:EndTime
         run('PlotNSave')
     end; StepNum= StepNum+1;
     
-        
-    
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
 
-%---Velocity eval of current timestep's vorticity config-----------
+        %---Velocity eval of current timestep's vorticity config-----------
     v_xB(:)=0; v_yB(:)=0; v_xBF(:)=0; v_yBF(:)=0; v_xE(:)=0; v_yE(:)=0;
     w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
     w_tot=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2])); %Sum of vorticity in each elem
@@ -86,7 +84,7 @@ for t=0:delt:EndTime
         v_xE(1,:,NsxS)= v_xE(1,:,NsxS)+ [v_xBt(EBl(NsxS)), v_xI(1,:,Lsx(1:numS(Src),Src),it) ,v_xBt(EBr(NsxS))];
         v_yE(1,:,NsyS)= v_yE(1,:,NsyS)+ [v_yBt(EBb(NsyS)), v_yI(1,:,Lsy(1:numS(Src),Src),it) ,v_yBt(EBt(NsyS))];
     end
-    %---Velocity eval ends---------------------------------------------   
+    %---Velocity eval ends---------------------------------------------
     
         %---Advection------------------------------------------------------
         w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity

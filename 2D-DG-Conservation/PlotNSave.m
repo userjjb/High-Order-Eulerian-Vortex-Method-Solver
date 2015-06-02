@@ -2,7 +2,6 @@ wxt(:,:,:,itt)=wx;
 tt(itt)=t;
 %surf(wxm,wym,reshape(wx,Np*K(1),Np*K(2))')
 %[-[.831,.696,.563,.43,.3,.168,.032],0.099,.227,.364]
-figure(1)
 contour(wxm,wym,reshape(wx,Np*K(1),Np*K(2))',PlotInt,'linewidth',1);
 axis equal
 axis(B)
@@ -19,5 +18,17 @@ text(B(1),B(4)*0.8,zmax*1.2,['Time: ',num2str(t),char(10),...
 % contour(wxm,wym,reshape(Cx,Np*K(1),Np*K(2))',0.1:.1:1,'linewidth',1);
 % axis equal
 % axis(B)
-pause(0.0001)
+drawnow
 itt=itt+1;
+if toc>BackupSave
+    if saveQ;
+        fprintf('Saving at: %i\n',round(toc))
+        save(filename,'wxt','setup'); 
+    end
+    BackupSave=BackupSave+1800;
+end
+if or(any(wx>max(1,10*zmax)),any(wx<min(-1,10*zmin)))
+    beep;pause(0.1); beep;
+    fprintf('Solution divergence may have occured, type "return" to continue anyway or "dbstop" to eject...\n')
+    keyboard
+end

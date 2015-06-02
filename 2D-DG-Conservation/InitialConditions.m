@@ -26,8 +26,6 @@ Pa=1;
 Pb=1;
 PR=1;
 ICfuns{end+1}=@(x,y) (1/PR^14)*(PR^2-min((x/Pa).^2+(y/Pb).^2,PR^2)).^7;
-vAfx=@(x,y) y.*( (-1./(16*(x.^2+y.^2))) .* (1-(1-min(x.^2+y.^2,1)).^8) );
-vAfy=@(x,y) -x.*( (-1./(16*(x.^2+y.^2))) .* (1-(1-min(x.^2+y.^2,1)).^8) );
     %Fun (4)
 ICfuns{end+1}=@(x,y) moll(x,y,0,0,0.31,0.31);
     %Strain (5-8) patch
@@ -61,6 +59,6 @@ if TestCases
         w=w+ICfuns{IC}(wxm,wym);
     end
 else
-    load('K4_48GDpt8ps2J.mat')
+    load('K4_48GDpt8ps2M.mat')
     w=reshape(wxt(:,:,:,end),5*48,5*48)';
 end

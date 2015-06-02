@@ -2,13 +2,13 @@ clear all
 clc
 
 it=1;
-tests=[3:2:13];
+tests=[13];
 for i=tests;
     data{it}=num2str(i);
     it=it+1;
 end
-post='GDpt4ps2';
-pre= 'P4_';
+post='GD';
+pre= 'PS24P3_';
 
 for runs=1:length(data)
     load([pre,data{runs},post,'.mat'])
@@ -28,15 +28,21 @@ bvals= 0.5*mod((1:length(data))-1,2);
 figure(1)
 hold on
 for runs= 1:length(data)
-    hp(runs)= plot(tt(runs,:),log10(L2(runs,:)),'Color',[rvals(runs), gvals(runs),bvals(runs)],'linewidth',2);
+    hp(runs)= plot(tt(runs,1:1:end),log10(L2(runs,1:1:end)),'-.k');%'Color',[rvals(runs), gvals(runs),bvals(runs)],'linewidth',2);
 end
 hl=legend(hp,data,'Location','northwest');
 set(hl, 'Interpreter', 'none')
+xlabel('Time(s)')
+ylabel('log(L^2 Error)')
+title('L^2 Error: Vorticity')
 
 %Plot convergence
 figure(2)
 hold on
 for i=1:size(L2,2)
-    C(i,:)=polyfit(log(tests),log(L2(:,i))',1);
+    C(i,:)=polyfit(log10(tests),-log10(L2(:,i))',1);
 end
-plot(tt(1,:),C(:,1))
+plot(tt(1,1:2:end),C(1:2:end,1),'-k')
+xlabel('Time(s)')
+ylabel('Order of Convergence')
+title('L^2 Error: Vorticity')
