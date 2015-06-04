@@ -1,0 +1,42 @@
+\BOOKMARK [2][]{Outline0.1}{Abstract}{}% 1
+\BOOKMARK [2][]{Outline0.2}{Introduction}{}% 2
+\BOOKMARK [3][]{Outline0.2.1.4}{Presentation Structure}{Outline0.2}% 3
+\BOOKMARK [3][]{Outline0.2.2.5}{Motivation}{Outline0.2}% 4
+\BOOKMARK [3][]{Outline0.2.3.6}{Proposed Method}{Outline0.2}% 5
+\BOOKMARK [3][]{Outline0.2.4.7}{Thesis Goals}{Outline0.2}% 6
+\BOOKMARK [2][]{Outline0.3}{Theory}{}% 7
+\BOOKMARK [3][]{Outline0.3.1.8}{Navier-Stokes: Velocity-vorticity form}{Outline0.3}% 8
+\BOOKMARK [3][]{Outline0.3.2.9}{Velocity-vorticity form}{Outline0.3}% 9
+\BOOKMARK [3][]{Outline0.3.3.10}{Velocity Evaluation}{Outline0.3}% 10
+\BOOKMARK [3][]{Outline0.3.4.11}{Kernel De-singularization}{Outline0.3}% 11
+\BOOKMARK [3][]{Outline0.3.5.12}{Discontinuous Galerkin \(DG\)}{Outline0.3}% 12
+\BOOKMARK [3][]{Outline0.3.6.15}{Solver Overview}{Outline0.3}% 13
+\BOOKMARK [2][]{Outline0.4}{Methodology}{}% 14
+\BOOKMARK [3][]{Outline0.4.1.16}{Method Specific Choices}{Outline0.4}% 15
+\BOOKMARK [3][]{Outline0.4.2.18}{Flux Interpolation and Modified Quadrature}{Outline0.4}% 16
+\BOOKMARK [3][]{Outline0.4.3.19}{Modified Quadrature Advantages}{Outline0.4}% 17
+\BOOKMARK [2][]{Outline0.5}{Implementation}{}% 18
+\BOOKMARK [3][]{Outline0.5.1.20}{Structured Tensor Mesh}{Outline0.5}% 19
+\BOOKMARK [3][]{Outline0.5.2.21}{Mass Matrix}{Outline0.5}% 20
+\BOOKMARK [3][]{Outline0.5.3.22}{Stiffness Matrix}{Outline0.5}% 21
+\BOOKMARK [3][]{Outline0.5.4.24}{Velocity Evaluation}{Outline0.5}% 22
+\BOOKMARK [3][]{Outline0.5.5.25}{Kernel value calculations}{Outline0.5}% 23
+\BOOKMARK [3][]{Outline0.5.6.26}{Convergence of Biot-Savart Integral}{Outline0.5}% 24
+\BOOKMARK [3][]{Outline0.5.7.27}{Explicit Time-Stepping}{Outline0.5}% 25
+\BOOKMARK [2][]{Outline0.6}{Results}{}% 26
+\BOOKMARK [3][]{Outline0.6.1.28}{Validating Test Cases}{Outline0.6}% 27
+\BOOKMARK [3][]{Outline0.6.2.31}{Comparison of Biot-Savart Kernel Effects\(P\)}{Outline0.6}% 28
+\BOOKMARK [3][]{Outline0.6.3.33}{Comparison of Cutoff Radius Effects\(P\)}{Outline0.6}% 29
+\BOOKMARK [3][]{Outline0.6.4.35}{Comparison of Reduced Order Velocity\(P\)}{Outline0.6}% 30
+\BOOKMARK [3][]{Outline0.6.5.37}{Observed Convergence Rate of Various Orders\(P\)}{Outline0.6}% 31
+\BOOKMARK [3][]{Outline0.6.6.38}{Conservation of Vorticity\(P\)}{Outline0.6}% 32
+\BOOKMARK [3][]{Outline0.6.7.39}{Conservation of Linear Impulse\(P\)}{Outline0.6}% 33
+\BOOKMARK [3][]{Outline0.6.8.40}{Conservation of Linear Impulse\(P\)}{Outline0.6}% 34
+\BOOKMARK [3][]{Outline0.6.9.41}{Qualitative Comparison of Vorticity\(S\)}{Outline0.6}% 35
+\BOOKMARK [3][]{Outline0.6.10.42}{Approximated Convergence Rate\(S\)}{Outline0.6}% 36
+\BOOKMARK [3][]{Outline0.6.11.44}{Qualitative Comparison of Vorticity\(K\)}{Outline0.6}% 37
+\BOOKMARK [3][]{Outline0.6.12.47}{Comparison of Aspect Ratio\(K\)}{Outline0.6}% 38
+\BOOKMARK [2][]{Outline0.7}{Discussion}{}% 39
+\BOOKMARK [3][]{Outline0.7.1.48}{Validation}{Outline0.7}% 40
+\BOOKMARK [3][]{Outline0.7.2.49}{Convergence Rate}{Outline0.7}% 41
+\BOOKMARK [2][]{Outline0.8}{Conclusion}{}% 42
