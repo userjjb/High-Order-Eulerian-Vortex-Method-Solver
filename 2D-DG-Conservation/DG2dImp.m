@@ -9,24 +9,24 @@ close all
 clear all
 clc
 
-tests=8:2:16;
+tests=30;
 
 for yam=1:numel(tests)
     clearvars wxt tt
     
-filename=['SC6_',num2str(tests(yam)),'GDpt5ps2.mat'];
+filename=['SC9_',num2str(tests(yam)),'GDpt17ps2T120.mat'];
 saveQ=1;
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
 K= [tests(yam) tests(yam)];               %Num elements along x,y
 %Solver parameters
-delt= .32;                            %Timestep
-N= 6;                               %Local vorticity poly order
-M= 6;                               %Local velocity poly order
+delt= .24;                            %Timestep
+N= 9;                               %Local vorticity poly order
+M= 9;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=1*(48^2/prod(K))*1E-9;
-del=.5*((B(2)-B(1))/K(1));
-EndTime=28;
+del=.17*((B(2)-B(1))/K(1));
+EndTime=120;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
 KernelType='PS2';
