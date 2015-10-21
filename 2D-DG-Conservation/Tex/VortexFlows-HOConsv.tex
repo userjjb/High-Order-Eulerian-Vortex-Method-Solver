@@ -34,7 +34,7 @@
 \setcounter{page}{2}
 \large VORTEX DOMINATED FLOWS: A HIGH-ORDER, CONSERVATIVE EULERIAN SIMULATION METHOD\\
 \vspace{1cm}\normalsize BY\\
-\vspace{1cm}\normalsize JOSH BEVAN
+\vspace{1cm}\normalsize JOSHUA BEVAN
 
 \vspace{1cm} \normalsize ABSTRACT OF A THESIS SUBMITTED TO THE FACULTY OF THE\\
 DEPARTMENT OF MECHANICAL ENGINEERING\\
@@ -51,11 +51,19 @@ Assistant Professor, Department of Mechanical Engineering
 \setcounter{page}{3}
 %Manual page numbering because 'abstract' is annoying
 \thispagestyle{plain} %Needed to show page number as pagestyle was reset to 'empty' when \maketitle is called internally
-A high-order, conservative Eulerian method will be presented for the simulation of vortex dominated inviscid fluid flows. The primitive variable incompressible Euler equations are recast in the velocity-vorticity form to explicitly enforce conservation of vorticity. The advection of the vorticity is then calculated via a two-step process: the velocity field is first determined by evaluation of the Biot-Savart integral, and then a line-based discontinuous Galerkin (DG) Eulerian spatial discretization scheme is applied to accurately advect the vorticity field. The accuracy and convergence of this method is examined for test cases where an analytical solution exists, as well as more challenging test cases which lack an analytical solution. The influence the velocity field discretization has on the performance of the method is of particular interest.
+A high-order, conservative Eulerian method is presented for the simulation of vortex dominated inviscid fluid flows. The primitive variable incompressible Euler equations are recast in the velocity-vorticity form to explicitly enforce conservation of vorticity. The advection of the vorticity is then calculated via a two-step process: the velocity field is first determined by evaluation of the Biot-Savart integral, and then a line-based discontinuous Galerkin (DG) Eulerian spatial discretization scheme is applied to accurately advect the vorticity field. The accuracy and convergence of this method is examined for test cases where an analytical solution exists, as well as more challenging test cases which lack an analytical solution. The influence the velocity field discretization has on the performance of the method is of particular interest.
+
+It is shown that the order of accuracy of the velocity field must be at least the same order as the vorticity field to maintain desired convergence. The error in the calculated velocity field is heavily influenced by the approximation taken in estimating the Biot-Savart integral. In particular, the approximation of the desingulariztion of the Biot-Savart integral to deal with singularities in the self-influence of an element leads to a careful balance. The error in the calculated velocity introduced by the desingularization must be balanced with the ameliorative effect the desingularization has on the convergence of the numerical quadrature applied to the Biot-Savart integral. Proper choice of parameters leads to nearly optimal convergence of the overall method in the analytical test, and high-order convergence in the qualitative test case.
 \end{abstract}
 
  \setcounter{page}{4}%Manual page numbering because 'abstract' is annoying
 \chapter*{Acknowledgments}
+Foremost, I would like to express my sincere gratitude to my advisor Prof. David Willis without whom this thesis, and indeed my graduate career would not exist. His enthusiasm and approachable style spurred me into pursuing computational science, when a semester before in my undergraduate degree I could not have imagined the path I would eventually take. His patience, wisdom, advice, and knowledge were instrumental in shaping both this thesis, as well as myself as a student.
+
+I would also like to thank the other members of my committee Prof. Juan Pablo Trelles and Prof. Per-Olof Persson. Their combined knowledge, insight, and feedback were a huge asset. Their questions and comments sharpened the quality of the thesis as well as my own thinking on the subject. In particular, Prof. Persson's work on Line-DG was notably useful in the easy extension to multiple dimensions of the solver. I would also like to thank Prof. Trelles for his tutelage during my graduate studies and his introduction to me of the software package PETSc, which gave me a great appreciation for clear and concise thought in the execution of a software code.
+
+Finally, I would also like to say a belated thank you to my undergraduate advisor Prof. Peter Avitabile who was instrumental in my success as an undergraduate student. His patience, guidance, and understanding were instrumental to my success as a student and his practical and knowledgeable skill as an instructor enriched my own knowledge.
+
 \begin{singlespace} %Tables should be single spaced
 \tableofcontents
 \listoftables
