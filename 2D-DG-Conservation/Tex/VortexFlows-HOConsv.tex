@@ -102,7 +102,7 @@ The convergence of vortex methods was proven early on for 2D \cite{Convg2D} and 
 Lagrangian point methods present several problems. Point disorganization can occur as the fluid evolves, this typically requires temporary meshing to recondition the discretization. This has been handled with various methods; recalculation of the quadrature weights at each time step \cite{Remesh2,Remesh3}, regridding/rezoning \cite{Remesh4}, and remeshing \cite{Remesh5} among them. Additionally, most Lagrangian approaches are limited to low order; careful point locations must be chosen and maintained through frequent remeshing etc. in order to achieve high-order convergence \cite{Strain1997}.
 
 \section{Existing Eulerian codes}
-In comparison, far less literature exists for Eulerian approaches. Chief among them is the work of Brown et al. \cite{Brown2000} who adapted the velocity-vorticity approach to a low order Finite Volume (FV) solver. Later they were able to extend their method to be accelerated via a FMM \cite{Brown2004}. However, like most FV approaches, to extend to high order solution approximations requires extended stencils that ultimately limit the geometrical freedom of the mesh. Steinhoff et al. also used an Eulerian approach, but solved a modified form of the inviscid Euler equations with ``vorticity confinement'' rather than the velocity-vorticity equation \cite{SteinhoffUnderhill1994}.
+In comparison, Eulerian approaches to vortex methods tend to be less common. Work has been done for viscous flows with solid bodies; both stationary \cite{MiscMeth3} and moving \cite{MiscMeth2}. Both of these solve the streamfunction-vorticity formulation, not the velocity-vorticity formulation. The velocity-vorticity formulation has been solved by an Eulerian approach by others \cite{MiscMeth4}.A notable example of an Eulerian approach to the velocity-vorticity formulation is the work of Brown et al. \cite{Brown2000} who adapted the velocity-vorticity approach to a low order Finite Volume (FV) solver. Later they were able to extend their method to be accelerated via a FMM \cite{Brown2004}. However, like most FV approaches, to extend to high order solution approximations requires extended stencils that ultimately limit the geometrical freedom of the mesh. Steinhoff et al. also used an Eulerian approach, but solved a modified form of the inviscid Euler equations with ``vorticity confinement'' rather than the velocity-vorticity equation \cite{SteinhoffUnderhill1994}.
 %
 \section{Proposed Method}
 \subsection{Alternate Advective Methods}
@@ -113,7 +113,7 @@ Finite difference methods suffer from similar problems as FV with extended stenc
 For domains free of impinging bodies a hexahedral mesh with a tensor product grid of interpolation points is convenient to implement. This permits the use of a line-DG \cite{Persson2013} approach that considerably simplifies multi-dimensional cases by allowing reuse of 1D methods. A 2D domain will be considered to evaluate whether the method is practical, as well as to limit solution times to those that are reasonable on a workstation. This has the advantage of removing the vortex stretching term and reducing the vorticity to a scalar. The resultant partial differential equation (PDE) takes on the familiar form of a scalar conservation law.
 
 \subsection{Velocity Field Fidelity}
-Unlike Lagrangian methods where advection is trivial, or Brown's method which is at low order, the necessary fidelity of the velocity field to maintain a particular global convergence rate that one would expect from the order of the vorticity field is not immediately obvious. The method by which one recovers the velocity field is decoupled from the advective solver, which has no a priori knowledge or assumptions about the quality of the velocity field approximation. 
+Unlike Lagrangian methods where advection is trivial, or Brown's method \cite{Brown2004} which is at low order, the necessary fidelity of the velocity field to maintain a particular global convergence rate that one would expect from the order of the vorticity field is not immediately obvious. The method by which one recovers the velocity field is decoupled from the advective solver, which has no a priori knowledge or assumptions about the quality of the velocity field approximation. 
 
 To maintain maximum flexibility for investigative purposes and to remove as much approximation error as possible the velocity field for validation of the underlying method is calculated via direct evaluation of the Biot-Savart integral.
 
@@ -141,7 +141,7 @@ Appendix A presents the specific implementation details necessary to implement t
 \section{Navier-Stokes: Velocity-vorticity form}
 The Navier-Stokes momentum equation is
  \be \rho \left(\frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u} \right) = -\nabla p + \mu \nabla^2 \mathbf u + \tfrac13 \, \mu \nabla (\nabla\cdot\mathbf{u}) \ee
-where $u$ is the velocity field, $p$ is the pressure field, and $\rho$ is the density. If we restrict ourselves to incompressible flows and define the quantity \textit{vorticity} as
+where $u$ is the velocity field, $p$ is the pressure, and $\rho$ is the density. If we restrict ourselves to incompressible flows and define the quantity \textit{vorticity} as
 \be \mathbf{\omega} = \nabla \times \mathbf{u} \ee
 Then the traditional form of the Navier-Stokes equations can be recast
 \ben{VV3D} \frac{\partial \omega}{\partial t} +  \mathbf{u} \cdot \nabla \omega - \omega \cdot \nabla  \mathbf{u} = S(x,t)\ee
@@ -150,7 +150,7 @@ where we collect viscous generation of vorticity in $S$.
 There are several benefits to the recast $\mathbf{u}$-$\omega$ form:
 \begin{enumerate}
 \item Explicit conservation of vorticity. The vorticity is recoverable from the primitive variable Navier-Stokes, but the diffusive nature of most upwinded advection means coherent vortical structures are quickly smeared.
-\item Frequently the distribution of the vorticity is quite sparse. The primitive variable form requires the velocity and pressure be evaluated over the whole domain. In comparison, the velocity-vorticity form only requires velocity to be evaluated in areas of non-zero vorticity. In areas where there is no vorticity, nothing needs to be advected. The sparser and more concentrated the vorticity, the larger the gap in performance between the two forms; this is especially true in 3D domains where the scaling from surfaces to volumes gives even greater opportunity for empty local regions in the domain. 
+\item Frequently the distribution of the vorticity is quite sparse. The primitive variable form requires the velocity and pressure be evaluated over the whole domain. In comparison, the velocity-vorticity form only requires velocity to be evaluated in areas of non-zero vorticity. In areas where there is no vorticity, nothing needs to be advected; hence, no velocity evaluation is required in these areas. The sparser and more concentrated the vorticity, the larger the gap in performance between the two forms; this is especially true in 3D domains where the scaling from surfaces to volumes gives even greater opportunity for empty local regions in the domain. 
 \item The primitive-variable form requires the pressure be  solved via a separate elliptic equation. The velocity-vorticity form is absent the pressure and automatically ensures satisfaction of continuity.
 \end{enumerate}
 
@@ -160,16 +160,16 @@ or if instead the second term is expressed in terms of the flux of the vorticity
 \ben{VV2DB} \frac{\partial \omega}{\partial t} + \frac{\partial f}{\partial x_i}= S(x,t)\ee
 
 \section{Velocity Field Evaluation: The Biot-Savart Integral}
-Since $\omega$ is the quantity of interest in the flowfield solution, the question must be posed: how does one determine the velocity field? For an incompressible 2D or 3D flow we can relate the velocity and vorticity by
+Since $\omega$ is the quantity of interest in the flowfield solution, the question must be posed: how does one determine the velocity field? For an incompressible 2D or 3D flow we can relate the velocity and vorticity by:
 \be \nabla^2 u = -\nabla \times \omega \ee
 If inverted, the Biot-Savart integral is obtained
 \ben{BS} u(x^*) = \int_\Omega K(x^*,x) \times \omega(x) dx \ee
 where $x^*$ is the point we wish to evaluate the velocity, $x$ is the coordinate in regions of non-zero vorticity, and $K(x^*,x)$ is the singular Biot-Savart kernel \cite{BealeMajda}
 \ben{BSkern} K(x^*,x) = \frac{-1}{2 \pi} \frac{x^*-x}{|x^*-x|^2} \ee
 
-There are several important points to note that are a consequence of this inversion. First, rather than solving the Poisson equation for the entirety of the domain we choose to evaluate the vorticity at some subset. For the purposes of advecting the velocity we will only need velocities near the vorticity itself. However, if the number of required velocity evaluation points is roughly proportional to the $N$ degrees of freedom of our vorticity approximation, then it is expected the velocity calculations will scale as $\mathcal{O}(N^2)$.
+There are several important points to note that are a consequence of this inversion. First, rather than solving the Poisson equation for the entirety of the domain we choose to evaluate the velocity only at regions where it is needed. For the purposes of advecting the velocity we will only need velocities near the vorticity itself. However, if the number of required velocity evaluation points is roughly proportional to the $N$ degrees of freedom of our vorticity approximation, then it is expected the velocity calculations will scale as $\mathcal{O}(N^2)$.
 
-There are numerous methods to reduce the computational complexity of similar N-body type problems to $\mathcal{O}(NlogN)$ or $\mathcal{O}(N)$. Cyclic reduction \cite{SchumannSweet1976}, tree-codes \cite{LindsayKrasny2001,BarnesHut1986}, and FMM \cite{GreengardRokhlin1987} are all possibilities. However, because the velocity field calculation method is decoupled from the PDE governing vorticity advection, there is no \textit{a priori} assurance that the velocity calculated is of sufficient fidelity to ensure convergence of the overall method (let alone convergence at the order one might expect based on solely the discretization). For maximum flexibility in investigating this dependency of overall convergence on the calculated velocity field we shall eschew more efficient techniques so that we can directly control the fidelity of the velocity field.
+There are numerous methods to reduce the computational complexity of similar N-body type problems to $\mathcal{O}(NlogN)$ or $\mathcal{O}(N)$. Cyclic reduction \cite{SchumannSweet1976}, tree-codes \cite{LindsayKrasny2001,BarnesHut1986}, and FMM \cite{GreengardRokhlin1987} are all possibilities. However, because the velocity field calculation method is decoupled from the PDE governing vorticity advection, there is no \textit{a priori} assurance that the velocity calculated is of sufficient fidelity to ensure convergence of the overall method. Even if it is sufficient for convergence, there is no guarantee the convergence would be at the order one might expect based on solely the discretization. For maximum flexibility in investigating this dependency of overall convergence on the calculated velocity field we shall eschew more efficient techniques so that we can directly control the fidelity of the velocity field.
 
 \section{Kernel Desingularization} 
 The second point to consider regarding the Biot-Savart integral is the singular nature of the exact kernel. Lagrangian point vortex methods have the benefit that the singularity and it's associated non-physical velocities occur in a relatively small region; they assume that the advective effect of the point vortex on itself is negligible. Generally, self-influence merely results in solid body rotation. This is the approach taken by early methods \cite{Point1}. While easy to implement, it results in large, non-physical velocities when two point vortices approach near each other. The other issue with this approach is poor convergence and accuracy of the resulting velocity field off particle paths as described by Beale and Majda \cite{BealeMajda}.
@@ -1079,6 +1079,12 @@ S. A. Huyer, J. R. Grant, Solution of two-dimensional vorticity equation on a La
 %Misc methods
 \bibitem{MiscMeth1}
 Williamson, David L. Integration of the barotropic vorticity equation on a spherical geodesic grid. Tellus 20, no. 4 (1968): 642-653.
+\bibitem{MiscMeth2}
+Russell, David, and Z. Jane Wang. A Cartesian grid method for modeling multiple moving objects in 2D incompressible viscous flow. Journal of Computational Physics 191, no. 1 (2003): 177-205.
+\bibitem{MiscMeth3}
+Calhoun, Donna. A Cartesian grid method for solving the two-dimensional streamfunction-vorticity equations in irregular regions. Journal of computational physics 176, no. 2 (2002): 231-275.
+\bibitem{MiscMeth4}
+Suh, J-C. The evaluation of the Biot–Savart integral. Journal of engineering mathematics 37, no. 4 (2000): 375-395.
 %Remeshing problems
 \bibitem{Remesh2}
 J. T. Beale, On the accuracy of vortex methods at large times, in: IMA Workshop on Computational Fluid Dynamics and Reacting Gas Flows, Springer-Verlag, 1988, p. 19.
