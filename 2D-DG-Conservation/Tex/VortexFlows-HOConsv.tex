@@ -181,7 +181,7 @@ The choice of a core function and a characteristic radius has important implicat
 
 Strictly positive core functions can only preserve the first moment, those preserving more may become negative in small regions. The more moments that are preserved, the higher order the convergence of the underlying method (assuming adequate choice of cutoff radius and sufficiently smooth flow). One may preserve all moments, permitting spectral convergence, with the caveat being the resulting core function does not have compact support \cite{Hald3}. This precludes the use of a tree-code of FMM. There are a wide range of desingularized kernels available, those tested in the solver are presented here.
 
-The classical choice is the Rosenhead-Moore kernel \cite{Rosenhead1930,Moore1972}. Note that strictly speaking this kernel does not satisfy convergence proofs as it does not conserve any moments. It is technically a 0th order kernel.
+The classical choice is the Rosenhead-Moore kernel \cite{Rosenhead1930,Moore1972}. Strictly speaking this kernel does not satisfy convergence proofs as it does not conserve any moments. It is technically a 0th order kernel.
 \ben{RMkern} K_{RM} = \frac{1}{2 \pi} \frac{x^*-x}{|z|^2+\delta^2} \ee
 where we have substituted $z=x^*-x$.
 
@@ -198,9 +198,9 @@ with a more involved alternative from \cite{HaldReview}
 \ben{PSkern2}  K_{spectral_2}= \frac{z}{2 \pi |z|^2} \left[1-\frac{8}{45(z/\delta)^2}(4J_2(\frac{4z}{\delta})-5J_2(\frac{2z}{\delta})+J_2(\frac{z}{\delta}))\right] \ee
 these have the advantage that \textit{all} moments are conserved, but they do not have compact support. They are also quite expensive to evaluate due to the Bessel evaluations. For a Lagrangian method this is a serious disadvantage (especially if one wishes to employ a FMM); however for an Eulerian method the vorticity solution points are fixed, so the kernel values need only be calculated once and re-used.
 
-The high-order Eulerian approach taken here means that the Biot-Savart integral diverges everywhere within any of the extended vorticity patches thanks to self-influence. The approach taken by Brown \cite{Brown2004} was to use the Rosenhead-Moore kernel, choosing a core size such that the maximum velocity occurred on the face of the finite volume unit. This can be constructed \textit{a priori} because the vorticity is taken as constant across the volume, as is typical in a FV approach. If the vorticity is spatially varying however, the choice of core size is more troublesome. This will be examined in greater detail in the next chapter.
+The high-order Eulerian approach taken here means that while the Biot-Savart integral converges, a singularity is always present within any of the extended vorticity patches thanks to self-influence. Conceptually this doesn't present an impossible problem, the integral \textit{does} converge in an analytical sense; practically speaking however a singularity may cause numerical integration procedures to diverge, or at the very least converge quite slowly. The approach taken by Brown \cite{Brown2004} was to use the Rosenhead-Moore kernel, choosing a core size such that the maximum velocity occurred on the face of the finite volume unit. This can be constructed \textit{a priori} because the vorticity is taken as constant across the volume, as is typical in a FV approach. If the vorticity is spatially varying however, the choice of core size is more troublesome. This will be examined in greater detail in the next chapter.
 
-\section{Discontinuous Galerkin}
+\section{The Discontinuous Galerkin Method}
 In order to solve Eqn.\,\eqref{VV2D} we adopt a method-of-lines approach \cite{RKDG}. We will first spatially discretize the system to obtain the semi-discrete system, then we use an explicit time discretization method to march forward in time. Note that Eqn.\,\eqref{VV2D} has the form of a scalar conservation law, with $\omega$ being the conserved quantity. The velocity field that advects the conserved quantity has been calculated by evaluation of the Biot-Savart integral for the current timestep.
 
 Our spatial discretization is at best an approximate solution to Eqn.\,\eqref{VV2D}, that we shall denote as $\aomega(x,t)$. Some residual will remain for the approximate solution of the PDE at any time $t$
@@ -212,7 +212,7 @@ The discontinuous Galerkin (DG) approach was introduced by Reed and Hill to solv
 Substituting the residual for our conservation PDE yields:
 \be \int_\Omega \frac{\partial \aomega}{\partial t} \, \phi_j \;dx + \int_\Omega \frac{\partial f(\aomega)}{\partial x} \, \phi_j \;dx = 0 \quad\mbox{for all}\; j\ee
 
-Choose the space of piecewise polynomials for the finite dimensional approximation space, and decompose the global domain into K elements where the local approximation space $\overset{k}{\mathbb{V}}_h$ has basis functions $\overset{k}{\psi}_i(x)$ over the local domain $x \in [x_L, x_R]$ (henceforth we drop the element index $k$ for brevity, except when describing two distinct elements that must be distinguished). Note that continuity of vorticity is not enforced across elements, and that the local approximation spaces for each element are independently defined. Finally, take the Bubnov-Galerkin choice of setting the test space to be the same as the approximation space so that $\phi_j=\psi_i \in \mathbb{V}_h$ if $i=j$. The local Mth order approximation to vorticity takes the form
+Now we go about reconstructing an approximation to the solution by following a common approach \cite{HestWar}. Choose the space of piecewise polynomials for the finite dimensional approximation space, and decompose the global domain into K elements where the local approximation space $\overset{k}{\mathbb{V}}_h$ has basis functions $\overset{k}{\psi}_i(x)$ over the local domain $x \in [x_L, x_R]$ (henceforth we drop the element index $k$ for brevity, except when describing two distinct elements that must be distinguished). Note that continuity of vorticity is not enforced across elements, and that the local approximation spaces for each element are independently defined. Finally, take the Bubnov-Galerkin choice of setting the test space to be the same as the approximation space so that $\phi_j=\psi_i \in \mathbb{V}_h$ if $i=j$. The local Mth order approximation to vorticity takes the form
 
 \be \omega(x,t) \approx \aomega(x,t) = \sum_{i=0}^M a_i(t)\psi_i(x)\ee
 
@@ -264,7 +264,7 @@ for t=0 to end
          calculate velocity contributions
       end
       %Calculate semi-discrete system terms
-      interpolate boundary_vorticity
+      interpolate element_boundary_vorticity
       calculate numerical_fluxes
       calculate total_surface_flux
       calculate internal_stiffness_flux
@@ -307,7 +307,7 @@ The Legendre polynomial is a result of the complete polynomial being reconstruct
 \be \int \ell_i(x) \ell_j(x) dx = \delta_{ij} w_j \ee
 
 %
-\section{Line-DG}
+\section{Line-Discontinuous Galerkin}
 An important consequence of the tensor basis means that the two basis directions are not coupled except at the interpolation nodes at the intersection of each direction's basis. This is the central idea in the line-DG \cite{Persson2013} approach, a 2D problem is transformed into two 1D problems of the form of Eqn.\,\eqref{DGtemp2}. The 2D time evolution of the overall system is the linear combination of the 1D evolutions; notably the instantaneous rate of change of a particular node is the sum of the rates from each direction. Heuristically, a node can be thought of as a differential element with each direction's basis acting on the respective ``face'' of the node.
 
 We can now use the developed 1D basis in a tensor product to form our 2D basis
@@ -329,7 +329,7 @@ We solve the PDE ``line-wise''; we form the tensor product of the chosen 1D inte
 \be \frac{\partial \omega_{ij}}{\partial t} = (\frac{\partial \omega_{ij}}{\partial t})_{x-line} + (\frac{\partial \omega_{ij}}{\partial t})_{y-line} \ee
 
 %
-\section{Flux Interpolation}
+\section{Flux Interpolation: An Important Distinction}
 The flux interpolant can be thought of  as either the interpolation of the product of the velocity and vorticity, or the product of the interpolations of velocity and vorticity; the result of these two interpolants are identical at the nodes
 \be I_N f(x_i) = I_N(u(x_i) \omega(x_i)) = I_N(u(x_i)) I_N(\omega(x_i)) \ee
 Furthermore, if we perform a Gauss-Legendre quadrature with collocated nodes, the quadrature is exact and the integral of either choice is equal
@@ -346,7 +346,7 @@ To retain the full order of each quantity, as well as suffer no quadrature error
 \end{split}\ee
 We will do this in the next section.
 %
-\section{Modified Quadrature}\label{ModQuad}
+\section{Modified Quadrature to Retain Interpolation Order (velocity and vorticity)}\label{ModQuad}
 To retain full interpolation order of both the velocity and vorticity in the stiffness integral we seek a set of quadrature weights derived from
 \be \sum_i^M u_i \sum_k^M \omega_k \;w_{unknown} = \sum_i^M u_i \sum_k^M \omega_k \int \ell_i(x) \ell_k(x) \ell_j'(x) \;dx \ee
 note that we might alternatively wish to find something that looks more like the Gauss-Legendre quadrature rule
@@ -376,7 +376,7 @@ This has significant advantages for the overall method, both in terms of minimiz
 
 There is an additional computational savings as well. Although we would prefer to use the Legendre points for the vorticity (to preserve the diagonal mass matrix structure that we shall discuss in a coming section), we would like to use Lobatto points for the velocity. Ordinarily we would have to evaluate the boundary velocities and then leave them unused in the stiffness integral with normal Gauss-Legendre quadrature; both the vorticity and velocity would have to share the same  nodes or face re-interpolation costs. This results in wasted velocity evaluations which are the most expensive operation. One might be tempted to only evaluate the velocity at the Legendre points and extrapolate the velocity at the boundaries, but there is no guarantee that the two interpolated velocities from adjacent elements would agree; this would present obvious challenges in the boundary flux evaluation. However by using the modified quadrature matrix one can freely mix node sets, meaning the boundary velocity values are reused in the stiffness integral.
 
-The maximum order polynomial that can be integrated exactly is also similar to some composite quadrature rules (such as Gauss-Kronrod \cite{Roni}): the order depends on whether the number of nodes is odd or even. An even node basis for one of the bases results in a $2M+1$ order accurate method, odd node number results in a $2M$ order accurate method (still sufficient to exactly integrate the product of two Mth order interpolants). A script in Appendix \ref{Algs} validates the convergence claims and order of accuracy of the modified quadrature method.
+The maximum order polynomial that can be integrated exactly is also similar to some composite quadrature rules (such as Gauss-Kronrod \cite{Roni}); the order depends on whether the number of nodes is odd or even. An even node basis for one of the bases results in a $2M+1$ order accurate method, odd node number results in a $2M$ order accurate method (still sufficient to exactly integrate the product of two Mth order interpolants). A script in Appendix \ref{Algs} validates the convergence claims and order of accuracy of the modified quadrature method.
 
 Table \ref{table:QuadMod} reports an example convergence study for a mixed order/type run with an 7th order Gauss-Legendre and 9th order Gauss-Lobatto quadrature rule showing quadrature error to within machine precision up to order $M+N+1$. It also compares the error in the interpolation of product (IoP) and product of interpolants (PoI), with the latter being an order of magnitude more accurate for this set of example functions.
 
@@ -399,7 +399,7 @@ Order M+N & IoP       & PoI      & Quad. Error & Discretiz. Error &  Order M  \\
 \end{tabular}
 \end{table}
 
-\section{Diagnostics}
+\section{Vortex Dominated Flow: Diagnostics}
 Two diagnostics are useful to evaluate the evolution of vortex dominated flows. The first is the vorticity moments of the system, which should be conserved \cite{Koum1997}, and are given by:
 \be J_{mn}=\int\int \omega(x,y)x^my^n \; dx\,dy \ee
 We shall consider in particular the linear impulse, $J_{01}$ and $J_{10}$.
@@ -415,7 +415,7 @@ We can use this as a measure of error between two functions:
 \be ||u-v||_2 = \sqrt{\int (u-v)^2 \; dx} \ee
 A discrete version needs to perform numerical quadrature to calculate the integral of the error. In situations where the calculated error is obtainable at the solution points, we have ready-made quadrature points that we can collocate such that we obtain the discrete form:
 \be ||u-v||_2 = \sqrt{[w_i]^T(u_{ij}-v_{ij})^2[w_j]} \ee
-where $w_i$ and $w_j$ are the appropriate quadrature weights associate with each direction of the tensor product of quadrature points and $u_{ij}$ and $v_{ij}$ are the values at the interpolation nodes. In situations where we must interpolate to generate a set of solution points in common between two different tests, and the interpolation is evaluated at a set of equispaced points we have:
+where $w_i$ and $w_j$ are the appropriate quadrature weights associated with each direction of the tensor product of quadrature points, and $u_{ij}$ and $v_{ij}$ are the values at the interpolation nodes. If two tests do not share a common set of solution points, we interpolate the results to a shared set of equispaced points and calculate the error by:
 \be ||u-v|| =\sqrt{\frac{1}{M\times N} \sum_{i=1}^M \sum_{j=1}^N (u_{ij}-v_{ij})^2 }\ee
 
 %------------------------------------
@@ -493,25 +493,25 @@ The integral involved in the spatial derivative of the weighting function genera
 The total surface flux is the net flow across element bounds into a particular line. It is calculated from the numerical flux and the weighting basis evaluated at the line boundaries.
 \be \boldsymbol{F} = \hat{f}\ell_j \Big|^{x_R}_{x_L} \ee
 
-The preamble contains various solver configuration parameters and initializes most of the persistent data objects. It also initializes quadrature information which in turn is used to initialize the quadrature weight matrices needed for the order of the vorticity and velocity as was described in \S\ref{ModQuad}.
+The preamble contains various solver configuration parameters and initializes most of the persistent data objects. It also initializes quadrature information which in turn is used to precalculate the quadrature weight matrices needed for the chosen order of the vorticity and velocity as was described in \S\ref{ModQuad}.
 
 The mass matrix will be shown to be diagonalizable in \S\ref{MassM} allowing it to be decoupled from the time derivative. This allows the quadrature matrix to be multiplied in place to incorporate the Jacobian as well as the inverse Mass matrix entry so that these do not needed to be multiplied by after the fact. 
 
-The next part of the solver creates element-line-boundary-node associativity. These are used to freely select the appropriate sections of data associated with a particular hierarchy. Most of these are simply a column-wise index list, some are specifically shaped so that the returned data from the index selection is the correct shape for reuse (ND matrix etc). This is also where the coordinates of the vorticity nodes, velocity boundary nodes, and velocity internal element nodes are specified. This is more full described in \S\ref{NodeNum}.
+The next part of the solver creates element-line-boundary-node associativity. These are used to freely select the appropriate sections of data associated with a particular hierarchy. Most of these are simply a column-wise index list, some are specifically shaped so that the returned data from the index selection is the correct shape for reuse (ND matrix etc). This is also where the coordinates of the vorticity nodes, velocity boundary nodes, and velocity internal element nodes are specified. This is more fully described in \S\ref{NodeNum}.
 
-Next, a cell list of functions that specify the initial conditions of the system. The resultant initial condition is the linear superposition of all the selected generating functions. The interpolation vectors for the surface flux are constructed, again incorporating the Jacobian and inverse mass entry like in the quadrature weight matrix to avoid element-wise multiplications later. Finally the ``generalized'' and ``nearby'' kernel evaluation matrices are constructed for later re-use as described in \S\ref{VelEval}.
+Next, a cell list of functions that specify the initial conditions of the system is evaluated; the initial conditions of the vorticity is the linear sum of each generating function. The resultant initial condition is the linear superposition of all the selected generating functions. The interpolation vectors for the surface flux are constructed, again incorporating the Jacobian and inverse mass entry like in the quadrature weight matrix to avoid element-wise multiplications later. Finally the ``generalized'' and ``nearby'' kernel evaluation matrices are constructed for later re-use as described in \S\ref{VelEval}.
 
 At this point the remainder of the code occurs inside the main time marching loop. A fourth-order, 14 stage, explicit Runge-Kutta routine is used with an inner loop used for stage-stepping. Depending on the solver setup, the velocity evaluation code is either executed every time step, or every stage as described in \S\ref{TimeStep}. The sum of the vorticity in each element is computed and those above a threshold are added to element-wise and line-wise masks. Each element in the mask is treated as a source of vorticity and the velocity from that element is added to the current running total for the global velocity. Total element and element boundary velocities are formed for later use in the semi-discrete system.
 
 The DG advection code always occurs within the RK stage loop. Vorticity is extrapolated at the element boundary. Boundary conditions are applied and the element boundary fluxes are evaluated. The stiffness term is evaluated for the current stage's vorticity and velocity configuration (\S\ref{StiffM}). At this point the semi-discrete system is complete and the stage's rate of change for all nodes is computed for each direction and the two are added together. The new vorticity is computed for the stage and both the time-stepping and stage-stepping loops wrap.
 
-There is also some additional post-processing type routines that run that save simulation data for later use, and can also update in realtime displaying current simulation diagnostics ($L^2$ norm, vorticity conservation etc.).
+There are also some additional post-processing type routines that run that save simulation data for later use, and can also update in realtime displaying current simulation diagnostics ($L^2$ norm, vorticity conservation etc.).
 
 %
 \section{Structured Tensor Mesh}\label{NodeNum}
 The test cases that are considered in this thesis are all free of impinging geometry and have no bias known \textit{a priori}, as such a constant-size structured mesh comprised of squares is used. It is worth noting that this is by no means required; an un-structured mesh is easily treated via a mapping to a canonical computational element \cite{Persson2013}. The structured mesh merely affords ease of implementation, as well as simplification of element-line-boundary-node indexing.
 
-Most data is stored in one of two different formats, either a column-major form that matches Matlab's memory layout to optimize indexing performance, or a ``line-wise'' format. The line-wise format groups nodes along the coordinate directions. Adjacent lines are parallel 1D basis functions that share a boundary node. Lines are numbered left to right, bottom to top for $x$-lines and bottom to top, left to right for $y$-streams. Both direction's lines are numbered separately. For an example layout of $x$ and $y$ lines see Figure~\ref{fig:streams}. The inset only shows the upper left chunk of a 5x4 global domain. The lowest two $y$-lines shown aren't sequential because one needs to continue counting in the $y$ direction from 1, there are 3 more elements with the left most $y$-line in each numbered '2,3,4' sequentially. Once we reach the top of the global domain the numbering wraps back around to the bottom, second leftmost $y$-stream: '5'.
+Most data is stored in one of two different formats, either a column-major form that matches Matlab's memory layout to optimize indexing performance, or a ``line-wise'' format. The line-wise format groups nodes along the coordinate directions. Adjacent lines are parallel 1D basis functions that share a boundary node. Lines are numbered left to right, bottom to top for $x$-lines and bottom to top, left to right for $y$-streams. Both direction's lines are numbered separately. For an example layout of $x$ and $y$ lines see Figure~\ref{fig:streams}. The inset only shows the upper left segment of a 5x4 global domain. The lowest two $y$-lines shown aren't sequential because one needs to continue counting in the $y$ direction from 1, there are 3 more elements with the left most $y$-line in each numbered '2,3,4' sequentially. Once we reach the top of the global domain the numbering wraps back around to the bottom, second leftmost $y$-stream: '5'.
 
 \begin{figure}
 \centering
@@ -521,7 +521,7 @@ Most data is stored in one of two different formats, either a column-major form 
 
 %
 \section{Boundary Conditions}
-Boundary conditions are typically handled automatically. The global domain of the model is sized so that no vorticity is advected past the boundary. Should vorticity still manage to pass the boundary it will be lost thanks to a 'NoInflow' condition; this is imposed by enforcing all surface flux along the domain boundary to be 0. Any vorticity that does reach the boundary is destroyed.
+In a finite element method, natural boundary conditions are typically handled automatically. The global domain of the model is sized so that no vorticity is advected past the boundary. Should vorticity still manage to pass the boundary it will be lost due to a 'NoInflow' condition; this is imposed by enforcing all surface flux along the domain boundary to be 0. Any vorticity that does reach the boundary is destroyed.
 
 A set of periodic boundary conditions were also created that permit study of toroidal or infinite cylinder domains that may be useful in the study of semi-infinite phenomena such as the Kelvin-Helmholtz instability on a infinite line of vorticity.
 
@@ -583,11 +583,11 @@ The second method is the one currently used in the code. The global domain is re
 \singlespacing
 \begin{lstlisting}[language=Matlab]
 kernel_xB= ...
-   gkernel_xB(:, [1:Np*K(2)] +Np*(K(2)-Enumy(Src)),...
-   [1:K(1)+1] +(K(1)-Enumx(Src)) );
+   gkernel_xB(:, [1:Np*K(2)] +Np*(K(2)-Enum_y(Src)),...
+   [1:K(1)+1] +(K(1)-Enum_x(Src)) );
 kernel_yB=...
-    gkernel_yB(:, [1:Np*K(1)] +Np*(K(1)-Enumx(Src)),...
-   [1:K(2)+1] +(K(2)-Enumy(Src)) );
+    gkernel_yB(:, [1:Np*K(1)] +Np*(K(1)-Enum_x(Src)),...
+   [1:K(2)+1] +(K(2)-Enum_y(Src)) );
 \end{lstlisting}
 \doublespacing
 
@@ -658,7 +658,7 @@ The current state of the solver is bottlenecked by the velocity evaluation, so a
 
 %
 \section{Explicit Time-Stepping}\label{TimeStep}
-With the semi-discrete system formed, one must now choose how to discretize in time. For simplicity an explicit time-stepping method will be used. The diagonalized mass matrix created in \S\ref{MassM} permits the compact rearrangement of Eqn.\,\eqref{DGJoshTemp2} to solve explicitly for the nodal rate of change of vorticity due to each of the lines that intersect the node. The contribution from each line is added and the total rate of change is used to advance stagewise within the RK routine:
+With the semi-discrete system formed, one must now select a time discretization scheme. For simplicity an explicit time-stepping method will be used. The diagonalized mass matrix created in \S\ref{MassM} permits the compact rearrangement of Eqn.\,\eqref{DGJoshTemp2} to solve explicitly for the nodal rate of change of vorticity due to each of the lines that intersect the node. The contribution from each line is added and the total rate of change is used to advance stagewise within the RK routine:
 
 \singlespacing
 \begin{lstlisting}
@@ -678,11 +678,11 @@ end
 \end{lstlisting}
 \doublespacing
 
-where delt is the timestep, nS is the number of stage RK method chosen, RKa and RKb are RK specific coefficients, Stiff\_x/Stiff\_y are the nodal stiffness values, SurfFlux\_x/SurffFlux\_y are the nodal surface flux values, k2 is the low-storage RK state variable, and wx/wy are line-wise vorticity state variables
+where $delt$ is the timestep, $nS$ is the number of stage RK method chosen, $RKa$ and $RKb$ are RK specific coefficients, $Stiff\_x$/$Stiff\_y$ are the nodal stiffness values, $SurfFlux\_x$/$SurfFlux\_y$ are the nodal surface flux values, $k2$ is the low-storage RK state variable, and $wx$/$wy$ are line-wise vorticity state variables
 
 The two chief categories are multi-step and multi-stage methods, typically either Adams-Bashforth or Runge-Kutta respectively \cite{ButcherSurvey}. It is known that Forward Euler and AB2 are unstable for DG with an upwind flux due to it's dissipative nature \cite{Reid}. The choices permitted then are Runge-Kutta or a higher-order Adams-Bashforth.
 
-The recent thesis work of Atcheson \cite{Reid} presents an excellent overview of the optimal choice of time-stepping algorithm for a DG operator. In particular it was shown that Runge-Kutta methods outperformed AB3 and that all higher-order Adams-Bashforth schemes required far too restrictive of a time-step to satisfy the CFL condition to be efficient. Out of all the Runge-Kutta schemes considered \cite{Toulorge} one of the competitive options was the ``NRK14C'' scheme developed by Niegemann et al. \cite{Niegemann}. This is an optimized 4th order, 14 stage low storage scheme of similar structure to other 2N style schemes \cite{Carpenter}.
+The recent thesis work of Atcheson \cite{Reid} presents a comprehensive overview of the optimal choice of time-stepping algorithm for a DG operator. In particular it was shown that Runge-Kutta methods outperformed AB3 and that all higher-order Adams-Bashforth schemes required far too restrictive of a time-step to satisfy the CFL condition to be efficient. Out of all the Runge-Kutta schemes considered \cite{Toulorge} one of the more competitive options was the ``NRK14C'' scheme developed by Niegemann et al. \cite{Niegemann}. This is an optimized 4th order, 14 stage low storage scheme of similar structure to other 2N style schemes \cite{Carpenter}.
 
 Notably, NRK14C permits a time-step 1.86 times as long per stage than the canonical RK4 assuming the limitation is the negative real component in the stability region of the method. This equates to a proportional runtime decrease for almost negligible implementation effort. 
 
@@ -693,7 +693,7 @@ Of course the time discretization error of the velocity field will be increased,
 %------------------------------------
 \chapter{Results}
 \section{Validating Test Cases}
-Of primary interest in the development of a new method is validation of it with common test cases, as well as an evaluation of convergence. The following test cases are evaluated and examined for a range of items of interest: behavior of Biot-Savart kernel choice and cutoff radius, stage vs step-wise velocity evaluation, effect of velocity order, convergence rate of vorticity and velocity, $L^2$ error, and appropriate conservation of vorticity and linear impulse.
+Of primary interest in the development of a new method is validation with common test cases, as well as an evaluation of convergence. The following test cases are evaluated and examined for a range of items of interest: behavior of Biot-Savart kernel choice and cutoff radius, stage vs step-wise velocity evaluation, effect of velocity order, convergence rate of vorticity and velocity, $L^2$ error, and appropriate conservation of vorticity and linear impulse.
 
 \subsection{Perlmann: Stationary Vortex}
 Perlmann's 7th order polynomial was the first case studied \cite{Perlmann1985}. The intial condition is a stationary vortex that permits an analytical solution to compare against. The initial vorticity distribution is of the form:
@@ -708,7 +708,7 @@ f(|z|)=
     -\frac{1}{16|z|^2} 			& |z|>1
 \end{cases}
 \]
-and are invariant with time. This test case is particularly useful as the availability of an analytical solution allows an accurate assessment of the $L^2$ error of the computed solution. Having a analytical solution also permits the full investigation of various methodology choices; a range of combinations of method parameters can be experimented with to empirically select reasonable choices for the de-singularized Biot-Savart kernel type, cutoff radius, stage vs stepwise velocity evaluation, and the approximation order of the velocity with respect to the vorticity approximation order.
+and are invariant with time. This test case is particularly useful as the availability of an analytical solution allows an accurate assessment of the $L^2$ error of the computed solution. Having an analytical solution also permits the full investigation of various methodology choices; a range of combinations of method parameters can be experimented with to empirically select reasonable choices for the de-singularized Biot-Savart kernel type, cutoff radius, stage vs stepwise velocity evaluation, and the approximation order of the velocity with respect to the vorticity approximation order.
 
 \subsection{Strain: Interacting Vortex Patches}
 Strain's system of interacting random vortex patches \cite{Strain1996} forms the next validation case. Specific initial conditions are specified for each of the vortex patches in Table \ref{table:StrainTable} with the overall system consisting of the linear superposition of each patch
@@ -743,7 +743,7 @@ This test case also has several relevant diagnostic features. The elliptical dis
 \section{Perlmann: Stationary Vortex}
 Unless otherwise specified, all experiments are stage-wise velocity evaluation with a time step of 0.5 seconds.
 \subsection{Comparison of Biot-Savart Kernel Effects}\label{Pkern}
-The first method choice examined is the de-singularized Biot-Savart kernel, with Eqns.\,\eqref{RMkern}, \eqref{SGkern}, \eqref{PSkern0}, and \eqref{PSkern2} tested. It is important to determine the kernel's effect on the order of convergence of the vorticity and velocity. Figures \ref{fig:KernW} and \ref{fig:KernU} plot the convergence of the vorticity and velocity respectively for the Rosenhead-Moore, Winckelmans-Leonard, and Spectral kernels. Solver parameters were chosen to obtain the minimum $L^2$ norm of the vorticity at the end of 20 seconds (the time period studied by \cite{Perlmann1985}) for a 6th order method. In all of the exploratory runs the spectral desingularized Biot-Savart kernels were found to give the best combination of $L^2$ norm, rate of convergence, and the additional convenience of not requiring changing depending on the order of the method as they are naturally infinite order and will be used henceforth unless otherwise specified.
+The first method choice examined is the de-singularized Biot-Savart kernel, with Eqns.\,\eqref{RMkern}, \eqref{SGkern}, \eqref{PSkern0}, and \eqref{PSkern2} tested. It is important to determine the kernel's effect on the order of convergence of the vorticity and velocity. Figures \ref{fig:KernW} and \ref{fig:KernU} plot the convergence of the vorticity and velocity respectively for the Rosenhead-Moore, Winckelmans-Leonard, and Spectral kernels. Solver parameters were chosen to obtain the minimum $L^2$ norm of the vorticity at the end of 20 seconds (the time period studied by \cite{Perlmann1985}) for a 6th order method. In all of the exploratory runs the spectral desingularized Biot-Savart kernels were found to give the best combination of $L^2$ norm, rate of convergence, and the additional convenience of not requiring changing depending on the order of the method and will be used henceforth unless otherwise specified.
 \begin{figure}
 \centering
 \includegraphics[width=1\textwidth]{KernW.PNG}
@@ -757,9 +757,9 @@ The first method choice examined is the de-singularized Biot-Savart kernel, with
 
 %
 \subsection{Cutoff Radius Effects}\label{Pcutoff}
-The cutoff radius is an important parameter in the desingularization of the Biot-Savart kernel. If it is too large it unnecessarily smooths the flow and the approximation error is larger with no added benefit. If it is too small the kernel is too nearly singular and the quadrature error will be large. A proper cutoff radius choice will balance the two errors so they are of the same magnitude to minimize the total overall error. Figure \ref{fig:CutoffW} and \ref{fig:CutoffU} compare the $L^2$ errors for the vorticity and velocity respectively for a 6th order method. The cutoff radius is allowed to vary according to mesh size such that $\delta/\Delta x$ remains constant for a particular fixed order. Solver parameters were chosen to be the same as spectral kernel experiment used in \S \ref{Pkern}.
+The cutoff radius is an important parameter in the desingularization of the Biot-Savart kernel. If it is too large it unnecessarily smooths the flow and the approximation error is larger with no added benefit. If it is too small the kernel is too close to singular and the quadrature error will be large. A proper cutoff radius choice will balance the two errors so they are of the same magnitude to minimize the total overall error. Figure \ref{fig:CutoffW} and \ref{fig:CutoffU} compare the $L^2$ errors for the vorticity and velocity respectively for a 6th order method. The cutoff radius is allowed to vary according to mesh size such that $\delta/\Delta x$ remains constant for a particular fixed order. Solver parameters were chosen to be the same as spectral kernel experiment used in \S \ref{Pkern}.
 
-Figure \ref{fig:CutoffL2} plots the log of the $L^2$ error for cutoff radii with similar rates of convergence for velocity, one with too small and the other too large of a cutoff radius to properly discriminate the difference in time varying behavior of the convergence rate for vorticity for these cutoff radii. Despite them having similar rates of convergence, the $L^2$ error is much smaller in the one with $\delta=0.1/\Delta x$ For this one the rate of convergence of vorticity is actually greater initially than all others, but decays as time passes.
+Figure \ref{fig:CutoffL2} plots the log of the $L^2$ error for cutoff radii with similar rates of convergence for velocity, one with too small and the other too large of a cutoff radius to properly discriminate the difference in time varying behavior of the convergence rate for vorticity for these cutoff radii. Despite them having similar rates of convergence, the $L^2$ error is much smaller in the one with $\delta=0.1/\Delta x$ For this one the rate of convergence of vorticity is actually greater initially than all others, but decays as the solution evolves.
 
 \begin{figure}
 \centering
