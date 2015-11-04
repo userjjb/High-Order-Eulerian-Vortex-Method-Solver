@@ -134,7 +134,7 @@ In Chapter 6 discusses the successful validation of the method, as well as the h
 
 Chapter 7 concludes the thesis as well as suggests several next steps that should be taken to improve the generality and performance of the method.
 
-Appendix A presents the specific implementation details necessary to implement the solver practically and efficiently. Several Matlab functions and routines are presented that either makeup the solver itself, or necessary auxiliary tools that are tangentially needed. Appendix B describes the runtime performance of the solver, dependent on solver parameters, tolerances, order, etc.
+Appendix A presents the specific implementation details necessary to implement the solver practically and efficiently. Several Matlab functions and routines are presented that either makeup the solver itself, or necessary auxiliary tools that are tangentially needed.
 
 %------------------------------------
 \chapter{Theory}
@@ -1018,18 +1018,18 @@ There are several additions that could be made to the high-order Eulerian veloci
 \subsection{Speed or Accuracy Improvements}
 Additionally several other improvements could be made to increase the speed or accuracy of the overall method:
 \begin{itemize}
-\item The largest improvement 
+\item The largest improvement to accuracy would be the implementation of an integration procedure for the singular Biot-Savart integral for self-influence and nearly singular integral for neighboring elements. This may also lead to relative speed improvements as well; the overall runtime would not be reduced, but the runtime required for a particular level of accuracy should be reduced. This would reduce or outright remove the need to de-singularize the Biot-Savart kernel, resulting in improved convergence of the overall method by reducing the balancing effect necessary in the selection of the cutoff radius.
 \item The implementation of a flux limiter would permit the preservation of the sparsity of vorticity and prevent vorticity noise from spreading to what should be otherwise empty elements. Currently advective calculations are only a small fraction of the computational budget, but if the cost of velocity evaluations were to be reduced advective calculations could necessitate a speedup in evaluation.
 \item Implict time-stepping would be very useful, especially for high-order solutions with many elements where solution stiffness dictates a time-step far smaller than may be of interest. Fast reduced velocity order or step-wise velocity evaluation solutions could be potentially used a pre-conditioner for the full order method.
 \item For practical scalability to application on large or complex problems the underlying code base should attempt to be parallelized for computation on clusters.
-\item Application of a FMM \cite{GreengardRokhlin1987} could drastically reduce the cost of velocity evaluations, although the spectral kernel could not be used for the de-singularized Biot-Savart integral.
+\item Application of a Fast Multipole Method \cite{GreengardRokhlin1987} could drastically reduce the cost of velocity evaluations, although the spectral kernel could not be used for the de-singularized Biot-Savart integral due to the non-compact support. Instead, a kernel with compact support would need to be used.
 \end{itemize}
 
 \subsection{Major Structural Changes}
 Finally, major structural changes to the underlying method could present new avenues of approach to obtaining solutions:
 \begin{itemize}
 \item Rather than taking the approach of Lagrangian methods and calculating the velocity field via the Biot-Savart integral, one could instead solve a Poisson problem for the velocity due to a vorticity configuration. The use of the Eulerian grid would simplify this and the non-physical singularities present in the Biot-Savart kernel could be avoided entirely, possibly eliminating the vorticity order decay observed in the Strain test case.
-\item Alternatively, one could attempt non-standard quadrature methods to more accurately integrate the nearly singular de-singularized or truly singular Biot-Savart kernel. This would permit a smaller cutoff radius and reduce the approximation error in the velocity field.
+\item Alternatively, one could attempt non-standard quadrature methods to more accurately integrate the nearly singular de-singularized or truly singular Biot-Savart kernel. This would permit a smaller cutoff radius (or remove the need for de-singularization entirely) and reduce the approximation error in the velocity field.
 \end{itemize}
 
 %------------------------------------
@@ -1195,21 +1195,277 @@ Reprinted from Journal of Computational Physics, 124.1, J. Strain, 2D vortex met
 %
 \chapter{Notable Code and Algorithms}\label{Algs}
 \section{Modified Two-part quadrature}
+\singlespacing
+\begin{lstlisting}[language=Matlab]
+function [W,Ll,Lr] = StiffnessQuadModWeights(Qx,Qx2)
+%Returns the M,N,N matrix of modified quadrature weights
+%associated with the N quadrature nodes Qx and M nodes
+%Qx2 for each weighting basis m<=M. Qx should be the 
+%conserved quantity and Qx2 the flux velocity. This 
+%quadrature is used to produce a stiffness matrix that
+%is the integral of the product of two interpolations times 
+%the spatial deriavitve of the weighting function. This is 
+%distinct from the integral of the interpolation of the product 
+%of two functions times the derivative of the weighting 
+%function, and more accurate. It also permits the use of
+%mixed quadrature, i.e. different order quadrature for 
+%each interpolation as well as differnet nodes (GL mixed 
+%with LGL for instance).
+N=length(Qx);
+M=length(Qx2);
+%All points except the basis point for each basis
+nn=elim(Qx(1:N)',Qx(1:N)',[1 3 2]);
+%Associated Lagrange basis function
+Lag1= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(nv,:,:)),...
+	bsxfun(@minus,Qx(nv),nn(nv,:,:))),3);
+nn2=elim(Qx2(1:M)',Qx2(1:M)',[1 3 2]);
+Lag2= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn2(nv,:,:)),...
+	bsxfun(@minus,Qx2(nv),nn2(nv,:,:))),3);
+dLag1= @(x,nv) Lag1(x,nv).*sum(1./bsxfun(@minus,x,nn(nv,:,:)),3);
 
-It is applied to the integration of the product of $M$ and $N=M-1$ order functions, with M varying over a particular range. The interpolation of the product (IoP) and product of the interpolants (PoI) were numerically integrated by Matlab's built-in adaptive quadrature routine until machine precision was 
+W=zeros(M,N,1,N);
+for j=1:N
+    for i=1:M
+        for n=1:N
+            trip=@(x) Lag1(x,j).*Lag2(x,i).*dLag1(x,n);
+            W(i,j,1,n)=integral(...
+		trip,-1,1,'RelTol',1e-14,'AbsTol',1e-15);
+        end
+    end
+end
 
-Vectorized Lagrange evaluation, Lagrange derivatives, etc
-\newpage
+Ll=Lag1(-1,1:N);
+Lr=Lag1(1,1:N);
+end
+\end{lstlisting}
+\doublespacing
+
+\section{Modified Quadrature Convergence Verification}
+The following script allows investigation of the convergence properties of the modified quadrature routine used. The quadrature routine can be compared to Matlab's $integral$ routine which is computed to within machine precision for validation purposes.
+
+\singlespacing
+\begin{lstlisting}[language=Matlab]
+%Matrix Q contains the result of the convergence tests
+P=8;
+[Qx,Qw]= GLquad(P);
+pp=elim(Qx(1:P)',Qx(1:P)',[1 3 2]);
+Lag3= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,pp(...
+	nv,:,:)),bsxfun(@minus,Qx(nv),pp(nv,:,:))),3);
+
+R=10;
+[Qx2,Qw2]= GLquad(R);
+rr=elim(Qx2(1:R)',Qx2(1:R)',[1 3 2]);
+Lag4= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,rr(...
+	nv,:,:)),bsxfun(@minus,Qx2(nv),rr(nv,:,:))),3);
+
+s = @(x) sin(pi*x);
+    c2 = 40/100;
+    b=-.2;
+g = @(x) exp(-(x-b).^2/(2*c2));
+s_g=@(x) s(x).*g(x);
+
+for N=3:15
+    [nd,w] = GLquad(N);
+    M=N+1;
+    [nd2,w2] = GLquad(M);
+    
+    %Fully vectorized for both x and nv
+    nn=elim(nd(1:N)',nd(1:N)',[1 3 2]);
+    Lag= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(...
+	nv,:,:)),bsxfun(@minus,nd(nv),nn(nv,:,:))),3);
+    nn2=elim(nd2(1:M)',nd2(1:M)',[1 3 2]);
+    Lag2= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn2(...
+	nv,:,:)),bsxfun(@minus,nd2(nv),nn2(nv,:,:))),3);
+    dLag= @(x,nv) Lag(x,nv).*sum(1./bsxfun(...
+	@minus,x,nn(nv,:,:)),3);
+    
+    interp_s=@(x) s(nd')*Lag(x,1:N);
+    interp_g=@(x) g(nd2')*Lag2(x,1:M);
+    interp_s_g=@(x) s_g(nd2')*Lag2(x,1:M);
+    interp_sg=@(x) interp_s(x).*interp_g(x);
+    
+    n=floor(N/2);
+    exact=@(x) s_g(x).*dLag(x-eps(x),n);
+    stiff_s_g=@(x) interp_s_g(x).*dLag(x-eps(x),n);
+    stiff_sg=@(x) interp_s(x).*interp_g(x).*dLag(x-eps(x),n);
+    
+    Q(N,3)=integral(exact,-1,1,'RelTol',1e-14,'AbsTol',1e-16);
+    Q(N,4)=integral(stiff_s_g,-1,1,'RelTol',1e-14,'AbsTol',1e-16);
+    Q(N,5)=integral(stiff_sg,-1,1,'RelTol',1e-14,'AbsTol',1e-16);
+    
+    Q(N,6)=stiff_s_g(Qx')*Qw';
+    Q(N,7)=stiff_sg(Qx')*Qw';
+        
+    for i=1:P
+        duo=@(x) Lag3(x,i).*dLag(x,n);
+        W(i)=integral(duo,-1,1,'RelTol',1e-14,'AbsTol',1e-15);
+    end
+    Q(N,8)=interp_s_g(Qx')*W';
+    
+    for i=1:P
+        for j=1:R
+                trip=@(x) Lag3(x,i).*Lag4(x,j).*dLag(x,n);
+                W2(i,j)=integral(trip,-1,1,'RelTol',1e-14,'AbsTol',1e-15);
+        end
+    end
+    Q(N,9)=interp_s(Qx')*(W2*interp_g(Qx2')');
+    
+    Q(N,15)=(N-1)+(M-1);
+    Q(N,16)=N;
+end
+Q(:,1)=Q(:,3)-Q(:,4);
+Q(:,2)=Q(:,3)-Q(:,5);
+
+Q(:,11)=Q(:,4)-Q(:,6);
+Q(:,12)=Q(:,4)-Q(:,8);
+Q(:,13)=Q(:,5)-Q(:,9);
+Q(:,14)=Q(:,3)-Q(:,9);
+\end{lstlisting}
+\doublespacing
+
 \section{Binary Singleton Expansion Matrix-Vector Products}
-\newpage
-\section{Lagrange Bases and Constructed Quadrature}
-\newpage
+Matlab does not permit application of the binary singleton expansion to matrix-vector and matrix-matrix products. Although it does permit application of elementwise multiplication via $bsxfun()$, it will return an error if the binary operator $@mtimes$ is used. One could instead perform the matrix-vector products slice by slice in $for()$ loops, but this is slow and unnatural mathematically. An external library is used to extend this ability to suit the purpose: $mtimesx()$. This permits very compact and readable code. In this application it also resulted in a 20x speedup in the advection portion of the code.
+
+An example application of this can be seen in the code below. Here the x-line stiffness value is calculated for \textit{all} x-lines in an element for \textit{all} elements simultaneously. It does this by calculating the product of the the x-line velocities by the modified quadrature matrix by the vorticity (ordered appropriately in a x-line major format). The matrices are 3, 4, and 3 dimensional respectively; each has a singelton dimension that is expanded via the $mtimesx()$ routine. The result returned is the nodal stiffness value calculated for all nodes in all elements.
+
+\singlespacing
+\begin{lstlisting}[language=Matlab]
+%Example non-standard bsx for matrix-vector products
+Stiff_x= mtimesx(v_xE,mtimesx(QwSM,wx));
+\end{lstlisting}
+\doublespacing
+
+\section{Lagrange Bases}
+To properly compare quadrature errors, one requires the analytical form of the Lagrange bases and their derivatives. These are tedious to generate by hand. The following snippet generates a fully vectorized set of anonymous functions for the Lagrange bases and their derivatives for an arbitrary $N$ order set. These can be multiplied by the value of the function at the interpolation points to give the interpolating function. This can then be used in Matlab routines such as $integral()$ to calculate exact within machine precision values to validate against.
+
+\singlespacing
+\begin{lstlisting}[language=Matlab]
+%Generate Gauss-Legendre quadrature points for Nth order
+[nd,w] = GLquad(N);
+%Fully vectorized for both x and nv
+nn=elim(nd(1:N)',nd(1:N)',[1 3 2]);
+%Lagrange anon function interpolates for any x
+Lag= @(x,nv) prod(bsxfun(@rdivide,bsxfun(@minus,x,nn(...
+	nv,:,:)),bsxfun(@minus,nd(nv),nn(nv,:,:))),3);
+%Derivative of Lagrange anon function
+dLag= @(x,nv) Lag(x,nv).*sum(1./bsxfun(...
+	@minus,x,nn(nv,:,:)),3);
+\end{lstlisting}
+\doublespacing
+
 \section{Velocity Evaluation}
+Velocity evaluation in the standard implementation occurs stage-wise. New domain velocities are calculated due to the new stage's state. The most expensive operations that occur are the indexing and manipulation of the kernel values for each node.
+
+\singlespacing
+\begin{lstlisting}[language=Matlab]
+v_xB(:)=0; v_yB(:)=0; v_xBF(:)=0; v_yBF(:)=0; v_xE(:)=0;
+%Reshaped to col-wise element chunks
+w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),...
+	[1 3 2 4]),1,Np^2,K(2)*K(1));
+%Sum of vorticity in each elem
+w_tot=abs(permute(mtimesx(w_elem,QwPre'),[3 1 2]));
+mask=find(w_tot>w_thresh); %Find "important" elements
+%Pre-multiply by quad weights for speed
+w_elemPre=bsxfun(@times,QwPre,w_elem(:,:,mask));
+
+v_xI= reshape(mtimesx(w_elemPre, kernel_x),1,Mp-2,Np*(...
+	2*NearRange+1)^2,[]);
+v_yI= reshape(mtimesx(w_elemPre, kernel_y),1,Mp-2,Np*(...
+	2*NearRange+1)^2,[]);
+for it=1:length(mask)
+    w_source=w_elemPre(:,:,it);
+    Src= mask(it);
+    NsxS=Nsx(1:numS(Src),Src);
+    NsyS=Nsy(1:numS(Src),Src);
+    %Form specific source kernel by transforming the 
+    %generalized source kernel to the specific source loc
+    kernel_xB= gkernel_xB(:, [1:Np*K(2)] +Np*(K(2)-...
+    Enumy(Src)), [1:K(1)+1] +(K(1)-Enumx(Src)) );
+    kernel_yB= gkernel_yB(:, [1:Np*K(1)] +Np*(K(1)-...
+    Enumx(Src)), [1:K(2)+1] +(K(2)-Enumy(Src)) );
+    %Calculate boundary velocities
+    v_xBt= permute(mtimesx(w_source,kernel_xB),[2 3 1]);
+    v_xB= v_xB + v_xBt;
+    v_yBt= permute(mtimesx(w_source,kernel_yB),[3 2 1]);
+    v_yB= v_yB + v_yBt;
+    %Form far field boundary velocities due to source,
+    %add to existing far field velocities. Be sure to 
+    %leave out near-field boundary velocities as these
+    %will be included in the whole element evals
+    v_xBFt= [v_xBt(EBl),v_xBt(EBr)]; v_xBFt(1,:,NsxS)=0;
+    v_xBF= v_xBF + v_xBFt;
+    v_yBFt= [v_yBt(EBb),v_yBt(EBt)]; v_yBFt(1,:,NsyS)=0;
+    v_yBF= v_yBF + v_yBFt;
+
+    %Assemble elementwise velocities for elements
+    %nearby the source
+    v_xE(1,:,NsxS)= v_xE(1,:,NsxS)+ [v_xBt(EBl(NsxS)),...
+	 v_xI(1,:,Lsx(1:numS(Src),Src),it) ,v_xBt(EBr(NsxS))];
+    v_yE(1,:,NsyS)= v_yE(1,:,NsyS)+ [v_yBt(EBb(NsyS)),...
+	 v_yI(1,:,Lsy(1:numS(Src),Src),it) ,v_yBt(EBt(NsyS))];
+end
+
+\end{lstlisting}
+\doublespacing
+
 \section{Semi-discrete System Construction}
-\newpage
+The semi-discrete system is constructed from the surface fluxes and the stiffness evaluation. The combination of the two uniquely determine the time-evolution of the system at the current time step.
+
+\singlespacing
+\begin{lstlisting}[language=Matlab]
+<for each time step>
+%---Advection---------------
+w_lx= mtimesx(Ll',wx);      %Left interpolated vorticity
+w_rx= mtimesx(Lr',wx);      %Right interpolated vorticity
+w_bx= mtimesx(Ll',wy);      %Bottom interpolated vorticity
+w_tx= mtimesx(Lr',wy);      %Top interpolated vorticity
+
+%Boundary fluxes
+if BCtype== 'NoInflow'
+    v_xBC= v_xB; v_xBC(:,1)= min(v_xBC(:,1),0);
+    v_xBC(:,end)= max(v_xBC(:,end),0);
+    v_yBC= v_yB; v_yBC(1,:)= min(v_yBC(1,:),0);
+    v_yBC(end,:)= max(v_yBC(end,:),0);
+end
+fl= abs( v_xBC(EBl) ).*( w_rx(x_km1).*(sign(v_xB(EBl))+alpha)...
+	 + w_lx.*(sign(v_xB(EBl))-alpha) );
+fr= abs( v_xBC(EBr) ).*( w_rx.*(sign(v_xB(EBr))+alpha)...
+	 + w_lx(x_kp1).*(sign(v_xB(EBr))-alpha) );
+fb= abs( v_yBC(EBb) ).*( w_tx(y_km1).*(sign(v_yB(EBb))+alpha)...
+	 + w_bx.*(sign(v_yB(EBb))-alpha) );
+ft= abs( v_yBC(EBt) ).*( w_tx.*(sign(v_yB(EBt))+alpha)...
+	 + w_bx(y_kp1).*(sign(v_yB(EBt))-alpha) );
+
+%Nodal total surface flux
+SurfFlux_x=bsxfun(@times,fr,LrM)-bsxfun(@times,fl,LlM);
+SurfFlux_y=bsxfun(@times,ft,LrM)-bsxfun(@times,fb,LlM);
+%Nodal stiffness eval
+Stiff_x= mtimesx(v_xBF,mtimesx(QwSMlow,wx));
+Stiff_x= Stiff_x + mtimesx(v_xE,mtimesx(QwSM,wx));
+Stiff_y= mtimesx(v_yBF,mtimesx(QwSMlow,wy));
+Stiff_y= Stiff_y + mtimesx(v_yE,mtimesx(QwSM,wy));
+\end{lstlisting}
+\doublespacing
+
 \section{Low-storage Stability Optimized Runge-Kutta}
+Once the semi-discrete system has been constructed the system is evolved stage-wise within the multistage Runge-Kutta timestepper. This is a low storage implementation so only the system state at the current stage is retained. After the stage's evolution is evaluated the stage-wise advection routine runs anew.
+
+\singlespacing
+\begin{lstlisting}[language=Matlab]
+<within each stage>
+%Reshape to match wx
+wx_dt= permute(Stiff_x-SurfFlux_x,[4 1 3 2]);
+%Reshape to match wx
+wy_dt= reshape(reshape(Stiff_y-SurfFlux_y,K(2),[])',Np,1,[]); 
+        
+k2= RKa(i)*k2 + delt*(wx_dt+wy_dt);
+wx= wx+RKb(i)*k2;
+%Reshape wx to match global node ordering
+wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]);
+\end{lstlisting}
+\doublespacing
 %
-\chapter{Computational Efficiency and Memory Footprint of Current Solver}\label{Algs}
+%\chapter{Computational Efficiency and Memory Footprint of Current Solver}\label{Algs}
 
 %\begin{figure}
 %\centering
