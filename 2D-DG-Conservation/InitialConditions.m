@@ -1,4 +1,4 @@
-function [w]=InitialConditions(w0,TestCases,wxm,wym)
+function [w]=InitialConditions(w0,TestCases,wxm,wym,filename_resume)
 
 %2D mollifier with center dx,dy and range over the ellipse with axes a,b
 %Not currently used, but may prove useful for IC funs that have 
@@ -51,6 +51,18 @@ Gb2=    2*0.07^2;
 Gdy2=   -1/5;
 GA2=    -.2;
 ICfuns{end+1}=@(x,y) GA2*exp( -(y-Gdy2-0.2*exp(-((x/2).^2)).*sin(2*x)).^2/Gb2 );%Center is at (dx,dy)
+    %Perlmann Pair (12,13)
+Pa=1;
+Pb=1;
+PX=2;
+PR=1;
+ICfuns{end+1}=@(x,y) (1/PR^14)*(PR^2-min(((x-PX)/Pa).^2+(y/Pb).^2,PR^2)).^7;
+
+Pa=1;
+Pb=1;
+PR=1;
+PX=-2;
+ICfuns{end+1}=@(x,y) (1/PR^14)*(PR^2-min(((x-PX)/Pa).^2+(y/Pb).^2,PR^2)).^7;
 
 %Iterate over each of the IC funs
 w=w0;
@@ -59,6 +71,7 @@ if TestCases
         w=w+ICfuns{IC}(wxm,wym);
     end
 else
-    load('K4_48GDpt8ps2M.mat')
-    w=reshape(wxt(:,:,:,end),5*48,5*48)';
+    load(filename_resume)
+    N=setup(2); K=setup(7:8);
+    w=reshape(wxt(:,:,:,end),(N+1)*K(2),(N+1)*K(1))';
 end

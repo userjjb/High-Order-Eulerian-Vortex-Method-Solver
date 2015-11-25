@@ -4,54 +4,17 @@
 %contribution, so dw_p/dt = dw_px/dt + dw_py/dt
 %The set of colinear points along a coordinate direction will be called a
 %"stream"
-
-close all
-clear all
-clc
-
-tests=60;
-
-for yam=1:numel(tests)
-    clearvars wxt tt
-    
-filename=['SC6_',num2str(tests(yam)),'GDwlD.mat'];
-filename_resume='SC6_60GDwlC.mat'; %For resuming previous run
-saveQ=1;
-%---Global domain initialization (parameters)------------------------------
-B= 3.5*[-1.25 1 -1.25 1];           %left, right, bottom, top
-K= [tests(yam) tests(yam)];               %Num elements along x,y
-%Solver parameters
-delt= .2;                            %Timestep
-N= 6;                               %Local vorticity poly order
-M= 6;                               %Local velocity poly order
-[RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
-w_thresh=1*(48^2/prod(K))*1E-9;
-del=.5*((B(2)-B(1))/K(1));
-EndTime=24.2;
-LogPeriod= uint64(1);
-BCtype= 'NoInflow';
-KernelType='WL';
-NearRange=ceil(K(1)/3);
-TestCases=0;
-alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-PlotInt=[-[.831,.696,.563,.43,.3,.168,.032],0.099,.227,.364];
-
-%Calculate all derived solver parameters (node/boundary/element positions
-%and numbering, discrete norm, and pre-allocate vorticity/velocity vars
-run('CalcedParams')
-%Setup initial conditions at t_0
-w=InitialConditions(w,TestCases,wxm,wym,filename_resume);
-
+  
+NewEndTime=144.5;
+PrevElapsed= setup(end);
+PrevEndTime=t+delt;
 %Solver--------------------------------------------------------------------
-run('SolverSetup')
 tic
-for t=0:delt:EndTime
+for t=PrevEndTime:delt:NewEndTime
     if mod(StepNum,LogPeriod)==0
         run('PlotNSave')
     end; StepNum= StepNum+1;
-    
-        
-    
+
     for i=1:nS
         St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
 
@@ -122,6 +85,5 @@ for t=0:delt:EndTime
         wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
     end
 end
-setup(end+1)=toc
+setup(end)=toc+PrevElapsed
 if saveQ; save(filename,'wxt','setup'); end
-end

@@ -3,15 +3,15 @@ clc
 set(0, 'DefaulttextInterpreter', 'none');
 
 it=1;
-tests=6:2:14;
+tests=[19];
 for i=tests;
     data{it}=num2str(i);
     it=it+1;
 end
-post='GDpt85ps2_24';
-pre= 'K4_';
+post='Gpt3PS2';
+pre= '6_';
 
-load('K4_30GDpt4sg_24.mat')
+load('6_36Gpt3PS2.mat')
 N=setup(2); M=setup(3); del=setup(4); deltE=setup(5); K=setup(7:8); B=setup(9:12);
 run('CalcedParams'); NpE=Np; QxE=Qx; KE=K(1); delXE=delX;
 wxE=permute(reshape(permute(wxt(:,1,Estreamx,:),[1 3 2 4]),Np,Np,K(2),K(1),[]),[2 1 3 4 5]);
@@ -49,8 +49,9 @@ LyE= LagE(IpE,1:NpE);
 LxA= LagA(IpA,1:NpA)';
 LyA= LagA(IpA,1:NpA);
 
-freqE= 2;%lcm(deltA*1000,deltE*1000)/(deltE*1000);
-freqA= 1;%lcm(deltA*1000,deltE*1000)/(deltA*1000);
+%Match the timestepping frequencies
+freqE= lcm(deltA*1000,deltE*1000)/(deltE*1000);
+freqA= lcm(deltA*1000,deltE*1000)/(deltA*1000);
 tratio= freqA/freqE;
 endtE=size(wxE,5);
 endtA=size(wxA,5);
@@ -81,7 +82,7 @@ bvals= 0.5*mod((1:length(data))-1,2);
 figure(1)
 hold on
 for runs= 1:length(data)
-    hp(runs)= plot(tt(runs,1:1:end),(L2d(runs,1:1:end)),'-k');%'Color',[rvals(runs), gvals(runs),bvals(runs)]);
+    hp(runs)= plot(tt(runs,1:1:end),(L2(runs,1:1:end)),'Color',[rvals(runs), gvals(runs),bvals(runs)]);
 end
 hl=legend(hp,data,'Location','northwest');
 set(hl, 'Interpreter', 'tex')
