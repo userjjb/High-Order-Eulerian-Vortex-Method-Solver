@@ -3,13 +3,13 @@ clc
 set(0, 'DefaulttextInterpreter', 'none');
 
 it=1;
-tests=[19];
+tests=[150, 100, 50, 25];
 for i=tests;
     data{it}=num2str(i);
     it=it+1;
 end
-post='Gpt3PS2';
-pre= '6_';
+post='';
+pre= '6_12NRK_';
 
 load('6_36Gpt3PS2.mat')
 N=setup(2); M=setup(3); del=setup(4); deltE=setup(5); K=setup(7:8); B=setup(9:12);

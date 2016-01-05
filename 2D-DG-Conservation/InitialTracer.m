@@ -1,4 +1,4 @@
-function [w]=InitialConditions(w0,TestCases,wxm,wym)
+function [w]=InitialTracer(w0,TestCases,wxm,wym)
 
 %2D mollifier with center dx,dy and range over the ellipse with axes a,b
 %Not currently used, but may prove useful for IC funs that have 

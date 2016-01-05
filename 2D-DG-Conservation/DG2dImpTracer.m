@@ -13,7 +13,7 @@ clc
 B= [-5 5 -1 1];           %left, right, bottom, top
 K= [25 5];               %Num elements along x,y
 %Solver parameters
-delt= 4;                            %Timestep
+delt= .8;                            %Timestep
 N= 6;                               %Local vorticity poly order
 M= 6;                               %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
@@ -26,7 +26,7 @@ KernelType='PS2';
 NearRange=7;
 TestCases=10;
 alpha= 1;                           %Numerical flux param (1 upwind,0 CD)
-PlotInt=[-.198:.02:.198];
+PlotInt=[-.198:.02:.198]*5;
 
 %Calculate all derived solver parameters (node/boundary/element positions
 %and numbering, discrete norm, and pre-allocate vorticity/velocity vars

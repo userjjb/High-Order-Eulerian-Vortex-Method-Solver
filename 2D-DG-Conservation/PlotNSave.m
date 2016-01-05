@@ -27,7 +27,7 @@ if toc>BackupSave
     end
     BackupSave=BackupSave+1800;
 end
-if or(or(any(wx>max(1,10*zmax)),any(wx<min(-1,10*zmin))),any(any(isnan(wx))))
+if or(or(any(wx>zmax),any(wx<zmin)),any(any(isnan(wx))))
     beep;pause(0.1); beep;
     fprintf('Solution divergence may have occured, type "return" to continue anyway or "dbquit" to eject...\n')
     keyboard

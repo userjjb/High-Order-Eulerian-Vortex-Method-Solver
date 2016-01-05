@@ -9,7 +9,7 @@ close all
 clear all
 clc
 
-tests=12;
+tests=19;
 
 for yam=1:numel(tests)
     clearvars wxt tt
@@ -20,11 +20,11 @@ saveQ=0;
 B= 3*[-1 1 -1 1];           %left, right, bottom, top
 K= [tests(yam) tests(yam)];               %Num elements along x,y
 %Solver parameters
-delt= 1.5;                            %Timestep
+delt= 0.125;                            %Timestep
 del=1*((B(2)-B(1))/K(1));
 N= 6;                               %Local vorticity poly order
 M= 6;                               %Local velocity poly order
-[RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
+RKa= [1/2 1/2 1]*delt;
 w_thresh=3*(48^2/prod(K))*1E-9;
 EndTime=400;
 LogPeriod= uint64(1);
@@ -48,9 +48,8 @@ for t=0:delt:EndTime
     if mod(StepNum,LogPeriod)==0
         run('PlotNSave')
     end; StepNum= StepNum+1;
-
-    for i=1:nS
-        St= t+RKc(i)*delt;              %Unused currently, St is the stage time if needed
+    wxTemp=wx;
+    for i=1:4
         %---Velocity eval of current timestep's vorticity config-----------
         v_xB(:)=0; v_yB(:)=0; v_xBF(:)=0; v_yBF(:)=0; v_xE(:)=0; v_yE(:)=0;
         w_elem=reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
@@ -113,10 +112,14 @@ for t=0:delt:EndTime
         wx_dt= permute(Stiff_x-SurfFlux_x,[4 1 3 2]); %Reshape to match wx
         wy_dt= reshape(reshape(Stiff_y-SurfFlux_y,K(2),[])',Np,1,[]); %Reshape to match wx
         
-        k2= RKa(i)*k2 + delt*(wx_dt+wy_dt); %No need to reset k2 at stage start, as RKa(1)=0
-        wx= wx+RKb(i)*k2;
-        wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
+        k(:,:,:,i)= wx_dt+wy_dt;
+        if i<4
+            wx= wxTemp+RKa(i)*k(:,:,:,i);
+            wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
+        end
     end
+    wx= wxTemp+(delt/6)*(k(:,:,:,1)+2*k(:,:,:,2)+2*k(:,:,:,3)+k(:,:,:,4));
+    wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
 end
 setup(end+1)=toc
 if saveQ; save(filename,'wxt','setup'); end

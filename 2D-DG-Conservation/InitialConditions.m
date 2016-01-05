@@ -44,7 +44,7 @@ ICfuns{end+1}=@(x,y) 20*(1- (min( sqrt((x/Ka).^2+(y/Kb).^2),SR)/SR).^4 );
     %Vortex Line (10,11)
 Gb1=    2*0.07^2; 
 Gdy1=   0;
-GA1=    .2;
+GA1=    1;
 ICfuns{end+1}=@(x,y) GA1*exp( -(y-Gdy1-0.2*exp(-((x/2).^2)).*sin(2*x)).^2/Gb1 );%Center is at (dx,dy)
 
 Gb2=    2*0.07^2; 
