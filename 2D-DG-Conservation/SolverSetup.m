@@ -82,45 +82,41 @@ case 'WL'
     kernel_x= (1/(2*pi))*permute(( bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 3 4 2]);
     Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
     kernel_y= (1/(2*pi))*permute(( bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 3 4 2]);
-    clearvars Rsq
 case 'SG'
     Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
     kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 3 4 2]);
     Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
     kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 3 4 2]);
-    clearvars Rsq
 case 'SG6'
     Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
     kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 3 4 2]);
     Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
     kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 3 4 2]);
-    clearvars Rsq
 case 'PS'
     Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
     kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1-besselj(0,sqrt(Rsq)/del)),[1 3 4 2]);
     Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
     kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1-besselj(0,sqrt(Rsq)/del)),[1 3 4 2]);
-    clearvars Rsq
 case 'PS2'
     Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
     kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 3 4 2]);
     Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
     kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 3 4 2]);
-    clearvars Rsq
 otherwise
     kernel_x= (1/(2*pi))*permute(bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2)+del^2),[1 3 4 2]);
     kernel_y= (1/(2*pi))*permute(bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2)+del^2),[1 3 4 2]);
+    Rsq= 1; %Allocate a dummy Rsq so we can clear in all cases
 end
-clearvars t1 t2 Nrv_x Nrv_y srcx srcy Local LEnum Lstreamx Lstreamy
+clearvars t1 t2 Nrv_x Nrv_y srcx srcy Local LEnum Lstreamx Lstreamy Rsq
 %%
 
 %Outer product of vorticity quadrature weights for pre-multiplication,
 %including Jacobian
 QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);
 k2= zeros(size(wx)); %LSERK stage state
-w_tot=abs(permute(mtimesx(reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)),QwPre'),[3 1 2]));
-mask=find(w_tot>w_thresh);
-setup=[sum(w_tot),N,M,del,delt,EndTime,K(1),K(2),B,TestCases,NearRange];
-zmax=1.5*max(max(w)); zmin=1.5*min(min(w));
-itt=1; BackupSave=1800;
-StepNum=uint64(0);
+w_tot= abs(permute(mtimesx(reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)),QwPre'),[3 1 2]));
+mask= find(w_tot>w_thresh);
+setup= [sum(w_tot),N,M,del,delt,EndTime,K(1),K(2),B,TestCases,NearRange];
+zmax= 1.5*max(max(w)); zmin=1.5*min(min(w));
+itt= 1; BackupSave= 1800;
+StepNum= uint64(0);
