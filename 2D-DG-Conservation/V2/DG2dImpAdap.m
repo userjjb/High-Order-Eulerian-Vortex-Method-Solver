@@ -9,38 +9,38 @@ close all
 clear all
 clc
 
-tests=108;                   %Test parameter range to iterate over
+tests=12;                   %Test parameter range to iterate over
 
 for yam=1:numel(tests)
     clearvars wxt tt
     
-filename=['3_',num2str(tests(yam)),'Gpt3PS2NR1_8_205pt5.mat'];
-saveQ=1;                    %Save time history of state to file
+filename=['6_',num2str(tests(yam)),'G1pt0PS2.mat'];
+saveQ=0;                    %Save time history of state to file
 %---Global domain initialization (parameters)------------------------------
 B= 3*[-1 1 -1 1];           %left, right, bottom, top
 K= [tests(yam) tests(yam)]; %Num elements along x,y
 %Solver parameters
-delt= .25;                  %Timestep
-del=.3*((B(2)-B(1))/K(1));
-N= 3;                       %Local vorticity poly order
-M= 3;                       %Local velocity poly order
+delt= 1.5;                  %Timestep
+del=1*((B(2)-B(1))/K(1));
+N= 6;                       %Local vorticity poly order
+M= 6;                       %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=3*(48^2/prod(K))*1E-9;
-ThresholdMap= 1;            %Plot thresholding of elements
-EndTime=194.5;
+ThresholdMap= 0;            %Plot thresholding of elements
+EndTime=400;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
 KernelType='PS2';
-NearRange=ceil(K(1)*(3/24)); %6th: 2/18<good enough<3/24, 10/18-full coupling (may be prob/order depend)
-TestCases=0;
+NearRange=ceil(K(1)/6);
+TestCases=12:13;
 alpha= 1;                   %Numerical flux param (1 upwind,0 CD)
-PlotInt=[0.001,0.005,0.01,.07:.08:1];%[10.^[-15:2:-1],0.02:.1:1,.98];
+PlotInt=[0.005,0.01,.07:.08:1];%[10.^[-15:2:-1],0.02:.1:1,.98];
 
 %Calculate all derived solver parameters (node/boundary/element positions
 %and numbering, discrete norm, and pre-allocate vorticity/velocity vars
 run('CalcedParams')
 %Setup initial conditions at t_0
-[w, prior_toc]=InitialConditions(w,TestCases,wxm,wym,'3_108Gpt3PS2NR1_8.mat');
+w=InitialConditions(w,TestCases,wxm,wym,'NONE');
 
 %Solver--------------------------------------------------------------------
 run('SolverSetup')
@@ -52,7 +52,7 @@ for t=0:delt:EndTime %timestep
 
     for i=1:nS %stagestep
         St= t+RKc(i)*delt; %Unused currently, St is the stage time if needed
-        %%A "short" explanation of velocity related calculations:
+        %A "short" explanation of velocity related calculations:
         %- We calculate the velocity field in two parts: near and far-field. Only elements containing
         %total vorticity greater than 'w_thresh' are included as sources.
         %- Elements within 'NearRange' of a source element are considered near-field; velocities due
@@ -83,7 +83,8 @@ for t=0:delt:EndTime %timestep
         %near-field velocities: 'v_xE'.
         %- Ultimately 'v_xB' is used to calculate boundary fluxes, 'v_xBF' to calculate far-field
         %nodal stiffness, and 'v_xE' to calculate near-field nodal stiffness.
-        %% ---Velocity eval of current timestep's vorticity config-----------
+        
+        %---Velocity eval of current timestep's vorticity config-----------
         v_xB(:)=0; v_yB(:)=0; v_xBF(:)=0; v_yBF(:)=0; v_xE(:)=0; v_yE(:)=0;
         w_elem= reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
         w_tot= abs(permute(mtimesx(w_elem,QwPre'),[3 1 2]));%Sum of vorticity in each elem
@@ -149,6 +150,6 @@ for t=0:delt:EndTime %timestep
         wy= reshape(reshape(wx,K(1)*Np,[])',Np,1,[]); %Reshape wx to match global node ordering
     end
 end
-setup(16)=toc+prior_toc;
+setup(end+1)=toc
 if saveQ; save(filename,'wxt','setup'); end
 end

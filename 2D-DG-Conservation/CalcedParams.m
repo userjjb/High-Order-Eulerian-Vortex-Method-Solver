@@ -35,7 +35,7 @@ v_yBF=zeros(1,2,Np*K(1)*K(2));
 [Enumx,Enumy]= meshgrid(1:K(1),1:K(2));
 Enum= reshape(1:K(1)*K(2),K(2),K(1));
 %Stream global numbering as well as stream to left or right for periodic
-%BCs For instance,pass x_km1 as an index to get the stream left of current
+%BCs For instance, pass x_km1 as an index to get the stream left of current
 Eord_x= reshape(1:K(1)*K(2)*Np,K(1),K(2)*Np)';
 x_km1= reshape(circshift(Eord_x,[0 1])',[],1);
 x_kp1= reshape(circshift(Eord_x,[0 -1])',[],1);

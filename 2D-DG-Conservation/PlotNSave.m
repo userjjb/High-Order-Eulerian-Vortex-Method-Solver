@@ -15,7 +15,7 @@ text(B(1)*1.7,B(4)*0.8,zmax*1.2,['Time: ',num2str(t),char(10),...
     '\Delta\omega: ',num2str(setup(1)-sum(w_tot))]);
 % figure(2)
 % contour(wxm,wym,reshape(Cx,Np*K(1),Np*K(2))',0.1:.1:1,'linewidth',1); axis equal; axis(B);
-if ThreshholdMap
+if ThresholdMap
     figure(2)
     imagesc(fliplr(reshape(w_tot>w_thresh,K(2),K(1)))); axis equal; axis([1 K(1) 1 K(2)]); colormap([1 1 1; 0 0 0]);
 end
@@ -23,7 +23,8 @@ drawnow
 itt=itt+1;
 if toc>BackupSave
     if saveQ;
-        fprintf('Saving at: %i\n',round(toc))
+        fprintf('Saving at: %i | %s \n',round(toc),(datestr(now)))
+        setup(16)=toc+prior_toc;
         save(filename,'wxt','setup'); 
     end
     BackupSave=BackupSave+1800;

@@ -3,15 +3,16 @@ clc
 set(0, 'DefaulttextInterpreter', 'none');
 
 it=1;
-tests=[150, 100, 50, 25];
-for i=tests;
-    data{it}=num2str(i);
-    it=it+1;
-end
+% tests=[28];
+% for i=tests;
+%     data{it}=num2str(i);
+%     it=it+1;
+% end
+data = {'6_18Gpt3PS2NR10' '6_36Gpt3PS2'};
 post='';
-pre= '6_12NRK_';
+pre= '';
 
-load('6_36Gpt3PS2.mat')
+load('3_108Gpt3PS2NR1_8.mat')
 N=setup(2); M=setup(3); del=setup(4); deltE=setup(5); K=setup(7:8); B=setup(9:12);
 run('CalcedParams'); NpE=Np; QxE=Qx; KE=K(1); delXE=delX;
 wxE=permute(reshape(permute(wxt(:,1,Estreamx,:),[1 3 2 4]),Np,Np,K(2),K(1),[]),[2 1 3 4 5]);
@@ -72,6 +73,7 @@ for t=1:freqE:endtE
     waitbar(t/endtE,h,sprintf('%s: %i',[pre,data{runs},post],floor((endtE-t)*toc/t)))
     it= it+1;
 end
+PlotPoints(runs)= it-1;
 
 end
 close(h)
@@ -82,7 +84,7 @@ bvals= 0.5*mod((1:length(data))-1,2);
 figure(1)
 hold on
 for runs= 1:length(data)
-    hp(runs)= plot(tt(runs,1:1:end),(L2(runs,1:1:end)),'Color',[rvals(runs), gvals(runs),bvals(runs)]);
+    hp(runs)= plot(tt(runs,1:1:PlotPoints(runs)),(L2(runs,1:1:PlotPoints(runs))),'Color',[rvals(runs), gvals(runs),bvals(runs)]);
 end
 hl=legend(hp,data,'Location','northwest');
 set(hl, 'Interpreter', 'tex')

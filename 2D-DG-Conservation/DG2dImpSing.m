@@ -9,30 +9,31 @@ close all
 clear all
 clc
 
-tests=108;                   %Test parameter range to iterate over
+tests=16;                   %Test parameter range to iterate over
 
 for yam=1:numel(tests)
     clearvars wxt tt
     
-filename=['3_',num2str(tests(yam)),'Gpt3PS2NR1_8_205pt5.mat'];
+filename=['5_',num2str(tests(yam)),'Gpt3PS2NR1_8.mat'];
 saveQ=1;                    %Save time history of state to file
 %---Global domain initialization (parameters)------------------------------
 B= 3*[-1 1 -1 1];           %left, right, bottom, top
 K= [tests(yam) tests(yam)]; %Num elements along x,y
 %Solver parameters
-delt= .25;                  %Timestep
-del=.3*((B(2)-B(1))/K(1));
-N= 3;                       %Local vorticity poly order
-M= 3;                       %Local velocity poly order
+delt= 1;                  %Timestep
+del=0;                      %Unused for BS kernel
+N= 5;                       %Local vorticity poly order
+M= 5;                       %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
 w_thresh=3*(48^2/prod(K))*1E-9;
 ThresholdMap= 1;            %Plot thresholding of elements
 EndTime=194.5;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
-KernelType='PS2';
+KernelType='BS';
+ModKernelFile='Iwm55.mat';  %File containing modified kernel values
 NearRange=ceil(K(1)*(3/24)); %6th: 2/18<good enough<3/24, 10/18-full coupling (may be prob/order depend)
-TestCases=0;
+TestCases=12:13;
 alpha= 1;                   %Numerical flux param (1 upwind,0 CD)
 PlotInt=[0.001,0.005,0.01,.07:.08:1];%[10.^[-15:2:-1],0.02:.1:1,.98];
 
@@ -40,7 +41,7 @@ PlotInt=[0.001,0.005,0.01,.07:.08:1];%[10.^[-15:2:-1],0.02:.1:1,.98];
 %and numbering, discrete norm, and pre-allocate vorticity/velocity vars
 run('CalcedParams')
 %Setup initial conditions at t_0
-[w, prior_toc]=InitialConditions(w,TestCases,wxm,wym,'3_108Gpt3PS2NR1_8.mat');
+[w, prior_toc]=InitialConditions(w,TestCases,wxm,wym,'none');
 
 %Solver--------------------------------------------------------------------
 run('SolverSetup')

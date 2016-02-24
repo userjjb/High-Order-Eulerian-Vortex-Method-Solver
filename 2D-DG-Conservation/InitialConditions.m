@@ -1,4 +1,4 @@
-function [w]=InitialConditions(w0,TestCases,wxm,wym,filename_resume)
+function [w, prior_toc]=InitialConditions(w0,TestCases,wxm,wym,filename_resume)
 
 %2D mollifier with center dx,dy and range over the ellipse with axes a,b
 %Not currently used, but may prove useful for IC funs that have 
@@ -70,8 +70,11 @@ if TestCases
     for IC=TestCases
         w=w+ICfuns{IC}(wxm,wym);
     end
+    prior_toc=0;
 else
     load(filename_resume)
-    N=setup(2); K=setup(7:8);
-    w=reshape(wxt(:,:,:,end),(N+1)*K(2),(N+1)*K(1))';
+    Nn=setup(2); Kk=setup(7:8);
+    w=reshape(wxt(:,:,:,end),(Nn+1)*Kk(2),(Nn+1)*Kk(1))';
+    prior_toc=setup(16);
+    clearvars wxt setup
 end

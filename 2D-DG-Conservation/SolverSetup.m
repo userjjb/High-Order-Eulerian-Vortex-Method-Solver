@@ -20,6 +20,11 @@ srcx=wxm(Nnumy(:,1,Estreamy(:,end) )); %Generalized source location
 srcy=wym(Nnumy(:,1,Estreamy(:,end) ));
 %Calculate generalized kernel for boundary velocity points
 switch KernelType
+case 'BS'
+    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_xB= (1/(2*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./Rsq,[1 4 3 2]);
+    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
+    gkernel_yB= (1/(2*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./Rsq,[1 4 3 2]);
 case 'WL'
     Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
     gkernel_xB= (1/(2*pi))*permute(( bsxfun(@minus,srcy(:),rv_xB(1,2,:,:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 4 3 2]);
@@ -77,6 +82,11 @@ Nrv_x= reshape([t1(:),t2(:)]',1,2,[]);
 Nrv_y= reshape([t2(:),t1(:)]',1,2,[]);
 [srcx,srcy]= meshgrid(Qx*(delX/2),Qx*(delX/2));
 switch KernelType
+case 'BS'
+    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
+    kernel_x= (1/(2*pi))*permute(bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./Rsq,[1 3 4 2]);
+    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
+    kernel_y= (1/(2*pi))*permute(bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./Rsq,[1 3 4 2]);
 case 'WL'
     Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
     kernel_x= (1/(2*pi))*permute(( bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 3 4 2]);
@@ -108,6 +118,19 @@ otherwise
     Rsq= 1; %Allocate a dummy Rsq so we can clear in all cases
 end
 clearvars t1 t2 Nrv_x Nrv_y srcx srcy Local LEnum Lstreamx Lstreamy Rsq
+%% Source and neighbor elements modified kernel
+%The singular (for self), or nearly-singular (for neighboring elements) BS kernel leads to
+%unallowable quadrature error. We can generate modified kernel values that when used lead to correct
+%integration of these elements. They are modified here.
+load(ModKernelFile); %Load Iwm
+%This file is expected to contain 'Iwm' a (Mp,Np,Mp,Np,3,3,2) size matrix. The value ordering is 
+%(J,I,Tj,Ti,Ex,Ey,X/Y) where J,I is the associated source vorticity interp node; Tj,Ti is the target
+%velocity stream node in the target element; Ex,Ey is the target element number with 2,2 being the
+%self element and 1,1 is the element with both x and y coordinates less than the self element; the
+%7th dimension has x-velocity kernels in the first entry and y-velocity kernel values in the second
+
+%Near kernel modification
+
 %%
 
 %Outer product of vorticity quadrature weights for pre-multiplication,
@@ -116,7 +139,7 @@ QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);
 k2= zeros(size(wx)); %LSERK stage state
 w_tot= abs(permute(mtimesx(reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)),QwPre'),[3 1 2]));
 mask= find(w_tot>w_thresh);
-setup= [sum(w_tot),N,M,del,delt,EndTime,K(1),K(2),B,TestCases,NearRange];
+setup= [sum(w_tot),N,M,del,delt,EndTime,K(1),K(2),B,TestCases,NearRange,0];
 zmax= 1.5*max(max(w)); zmin=1.5*min(min(w));
 itt= 1; BackupSave= 1800;
 StepNum= uint64(0);
