@@ -4,24 +4,21 @@
 %contribution, so dw_p/dt = dw_px/dt + dw_py/dt
 %The set of colinear points along a coordinate direction will be called a
 %"stream"
-
 close all
 clear all
 clc
 
 tests=16;                   %Test parameter range to iterate over
-
 for yam=1:numel(tests)
     clearvars wxt tt
-    
 filename=['5_',num2str(tests(yam)),'Gpt3PS2NR1_8.mat'];
 saveQ=1;                    %Save time history of state to file
 %---Global domain initialization (parameters)------------------------------
-B= 3*[-1 1 -1 1];           %left, right, bottom, top
+B= 3.5*[-1 1 -1 1];         %left, right, bottom, top
 K= [tests(yam) tests(yam)]; %Num elements along x,y
 %Solver parameters
-delt= 1;                  %Timestep
-del=0;                      %Unused for BS kernel
+delt=1;                     %Timestep
+del=.3*((B(2)-B(1))/K(1));  %Unused for BS kernel
 N= 5;                       %Local vorticity poly order
 M= 5;                       %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
@@ -31,7 +28,7 @@ EndTime=194.5;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
 KernelType='BS';
-ModKernelFile='Iwm55.mat';  %File containing modified kernel values
+ModKernelFile='Iwm55M.mat';  %File containing modified kernel values
 NearRange=ceil(K(1)*(3/24)); %6th: 2/18<good enough<3/24, 10/18-full coupling (may be prob/order depend)
 TestCases=12:13;
 alpha= 1;                   %Numerical flux param (1 upwind,0 CD)
@@ -86,15 +83,15 @@ for t=0:delt:EndTime %timestep
         %nodal stiffness, and 'v_xE' to calculate near-field nodal stiffness.
         %% ---Velocity eval of current timestep's vorticity config-----------
         v_xB(:)=0; v_yB(:)=0; v_xBF(:)=0; v_yBF(:)=0; v_xE(:)=0; v_yE(:)=0;
-        w_elem= reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)); %Reshaped to col-wise element chunks
-        w_tot= abs(permute(mtimesx(w_elem,QwPre),[3 1 2]));%Sum of vorticity in each elem
+        w_elem= reshape(wy(:,Estreamy),Np^2,[]); %Reshaped to col-wise element chunks
+        w_tot= abs(QwPre'*w_elem);%Sum of vorticity in each elem
         mask= find(w_tot>w_thresh);                         %Find "important" elements
-        w_elemPre= bsxfun(@times,QwPre',w_elem(:,:,mask));   %Pre-multiply by quad weights for speed
+        w_elemPre= bsxfun(@times,QwPre,w_elem(:,mask));   %Pre-multiply by quad weights for speed
         %Internal element only near-field velocities for ALL sources
-        v_xI= reshape(mtimesx(w_elemPre, kernel_x),1,Mp-2,Np*(2*NearRange+1)^2,[]);
-        v_yI= reshape(mtimesx(w_elemPre, kernel_y),1,Mp-2,Np*(2*NearRange+1)^2,[]);
+        v_xI= reshape(kernel_x'*w_elemPre,1,Mp-2,Np*(2*NearRange+1)^2,[]);
+        v_yI= reshape(kernel_y'*w_elemPre,1,Mp-2,Np*(2*NearRange+1)^2,[]);
         for it=1:length(mask)
-            w_source=w_elemPre(:,:,it);
+            w_source=w_elemPre(:,it)';
             Src= mask(it);
             %Near streams for this source
             NsxS=Nsx(1:numS(Src),Src);

@@ -75,53 +75,44 @@ for Src=1:Enum(end,end)
     Lsx(1:numS(Src),Src)= sort(reshape(Lstreamx(:, Local(Src)),[],1));
     Lsy(1:numS(Src),Src)= sort(reshape(Lstreamy(:, Local(Src)),[],1));
 end
-
-[t2,t1]= meshgrid(reshape(bsxfun(@plus,Qx/2,-NearRange:NearRange)*delX,1,[]),...
+%Note: Nrv y-coords for x-streams are the same as x-coords for y-streams and vice versa
+[Nrv_y,Nrv_x]= meshgrid(reshape(bsxfun(@plus,Qx/2,-NearRange:NearRange)*delX,1,[]),...
     reshape(bsxfun(@plus,Qx2(2:end-1)/2,-NearRange:NearRange)*delX,1,[]));
-Nrv_x= reshape([t1(:),t2(:)]',1,2,[]);
-Nrv_y= reshape([t2(:),t1(:)]',1,2,[]);
 [srcx,srcy]= meshgrid(Qx*(delX/2),Qx*(delX/2));
+
+Rsqx= bsxfun(@minus,Nrv_x(:)',srcx(:)).^2 + bsxfun(@minus,Nrv_y(:)',srcy(:)).^2;
+Rsqy= bsxfun(@minus,Nrv_y(:)',srcx(:)).^2 + bsxfun(@minus,Nrv_x(:)',srcy(:)).^2;
+Mx= bsxfun(@minus,srcy(:),Nrv_y(:)')/(2*pi);
+My= bsxfun(@minus,Nrv_y(:)',srcx(:))/(2*pi);
 switch KernelType
 case 'BS'
-    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
-    kernel_x= (1/(2*pi))*permute(bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./Rsq,[1 3 4 2]);
-    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
-    kernel_y= (1/(2*pi))*permute(bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./Rsq,[1 3 4 2]);
+    kernel_x= Mx./Rsqx;
+    kernel_y= My./Rsqy;
 case 'WL'
-    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
-    kernel_x= (1/(2*pi))*permute(( bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 3 4 2]);
-    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
-    kernel_y= (1/(2*pi))*permute(( bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 3 4 2]);
+    kernel_x= ( Mx.*(Rsqx+2*del^2) )./(Rsqx+del^2).^(2);
+    kernel_y= ( My.*(Rsqy+2*del^2) )./(Rsqy+del^2).^(2);
 case 'SG'
-    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
-    kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 3 4 2]);
-    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
-    kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 3 4 2]);
+    kernel_x= (Mx./Rsqx).*(1-(1-Rsqx/del^2).*exp(-Rsqx/del^2));
+    kernel_y= (My./Rsqy).*(1-(1-Rsqy/del^2).*exp(-Rsqy/del^2));
 case 'SG6'
-    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
-    kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 3 4 2]);
-    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
-    kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 3 4 2]);
+    kernel_x= (Mx./Rsqx).*(1-(1-2*Rsqx/del^2+0.5*Rsqx.^2/del^4).*exp(-Rsqx/del^2));
+    kernel_y= (My./Rsqy).*(1-(1-2*Rsqy/del^2+0.5*Rsqy.^2/del^4).*exp(-Rsqy/del^2));
 case 'PS'
-    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
-    kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1-besselj(0,sqrt(Rsq)/del)),[1 3 4 2]);
-    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
-    kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1-besselj(0,sqrt(Rsq)/del)),[1 3 4 2]);
+    kernel_x= (Mx./Rsqx).*(1-besselj(0,sqrt(Rsqx)/del));
+    kernel_y= (My./Rsqy).*(1-besselj(0,sqrt(Rsqy)/del));
 case 'PS2'
-    Rsq= sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2);
-    kernel_x= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(Rsq)).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 3 4 2]);
-    Rsq= sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2);
-    kernel_y= (1/(2*pi))*permute( (bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(Rsq)).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 3 4 2]);
-otherwise
-    kernel_x= (1/(2*pi))*permute(bsxfun(@minus,srcy(:),Nrv_x(1,2,:,:))./(sum(bsxfun(@minus,Nrv_x,[srcx(:),srcy(:)]).^2,2)+del^2),[1 3 4 2]);
-    kernel_y= (1/(2*pi))*permute(bsxfun(@minus,Nrv_y(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,Nrv_y,[srcx(:),srcy(:)]).^2,2)+del^2),[1 3 4 2]);
-    Rsq= 1; %Allocate a dummy Rsq so we can clear in all cases
+    kernel_x= (Mx./Rsqx).*(1- (8./(45*Rsqx/del^2)).*(4*besselj(2,4*sqrt(Rsqx)/del)-5*besselj(2,2*sqrt(Rsqx)/del)+besselj(2,sqrt(Rsqx)/del)));
+    kernel_y= (My./Rsqy).*(1- (8./(45*Rsqy/del^2)).*(4*besselj(2,4*sqrt(Rsqy)/del)-5*besselj(2,2*sqrt(Rsqy)/del)+besselj(2,sqrt(Rsqy)/del)));
+otherwise %RM
+    kernel_x= Mx./(Rsqx+del^2);
+    kernel_y= My./(Rsqy+del^2);
 end
-clearvars t1 t2 Nrv_x Nrv_y srcx srcy Local LEnum Lstreamx Lstreamy Rsq
+%clearvars Nrv_x Nrv_y srcx srcy Local LEnum Lstreamx Lstreamy Rsq Rsqx Rsqy
 %% Source and neighbor elements modified kernel
 %The singular (for self), or nearly-singular (for neighboring elements) BS kernel leads to
 %unallowable quadrature error. We can generate modified kernel values that when used lead to correct
 %integration of these elements. They are modified here.
+if strcmp(KernelType,'BS')
 load(ModKernelFile); %Load Iwm
 %This file is expected to contain 'Iwm' a (Mp,Np,Mp,Np,3,3,2) size matrix. The value ordering is 
 %(J,I,Tj,Ti,Ex,Ey,X/Y) where J,I is the associated source vorticity interp node; Tj,Ti is the target
@@ -129,15 +120,20 @@ load(ModKernelFile); %Load Iwm
 %self element and 1,1 is the element with both x and y coordinates less than the self element; the
 %7th dimension has x-velocity kernels in the first entry and y-velocity kernel values in the second
 
+NBnum= bsxfun(@plus, [1:3*(Mp-2)]', ((NearRange-1)*(Mp-2)*((2*NearRange+1)*Np+1)) + ((2*NearRange+1)*(Mp-2)*[0:3*Np-1]));
+kernMap= reshape(Qw'*Qw,[],1)*((B(2)-B(1))/(K(1)*4));
+kernel_x(:,NBnum(:))= bsxfun(@rdivide,reshape(permute(Iwm(:,:,:,2:end-1,:,:,1),[1 2 4 5 3 6 7]),[Np^2 3*Np*3*(Mp-2)]),kernMap);
+kernel_y(:,NBnum(:))= bsxfun(@rdivide,reshape(permute(Iwm(:,:,2:end-1,:,:,:,2),[1 2 3 6 4 5 7]),[Np^2 3*Np*3*(Mp-2)]),kernMap);
+end
 %Near kernel modification
 
 %%
 
 %Outer product of vorticity quadrature weights for pre-multiplication,
 %including Jacobian
-QwPre=(delX/2)^2*reshape(Qw'*Qw,1,[]);
+QwPre=(delX/2)^2*reshape(Qw'*Qw,[],1);
 k2= zeros(size(wx)); %LSERK stage state
-w_tot= abs(permute(mtimesx(reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)),QwPre'),[3 1 2]));
+w_tot= abs(permute(mtimesx(reshape(permute(reshape(wy,Np,K(2),Np,K(1)),[1 3 2 4]),1,Np^2,K(2)*K(1)),QwPre),[3 1 2]));
 mask= find(w_tot>w_thresh);
 setup= [sum(w_tot),N,M,del,delt,EndTime,K(1),K(2),B,TestCases,NearRange,0];
 zmax= 1.5*max(max(w)); zmin=1.5*min(min(w));
