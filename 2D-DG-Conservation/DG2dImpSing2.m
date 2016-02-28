@@ -91,7 +91,7 @@ for t=0:delt:EndTime %timestep
         v_xI= reshape(kernel_x'*w_elemPre,1,Mp-2,Np*(2*NearRange+1)^2,[]);
         v_yI= reshape(kernel_y'*w_elemPre,1,Mp-2,Np*(2*NearRange+1)^2,[]);
         for it=1:length(mask)
-            w_source=w_elemPre(:,it)';
+            w_source=w_elemPre(:,it);
             Src= mask(it);
             %Near streams for this source
             NsxS=Nsx(1:numS(Src),Src);
@@ -101,8 +101,8 @@ for t=0:delt:EndTime %timestep
             kernel_xB= gkernel_xB(:, [1:Np*K(2)] +Np*(K(2)-Enumy(Src)), [1:K(1)+1] +(K(1)-Enumx(Src)) );
             kernel_yB= gkernel_yB(:, [1:Np*K(1)] +Np*(K(1)-Enumx(Src)), [1:K(2)+1] +(K(2)-Enumy(Src)) );
             %Calculate boundary velocities
-            v_xBt= permute(mtimesx(w_source,kernel_xB),[2 3 1]); v_xB= v_xB + v_xBt;
-            v_yBt= permute(mtimesx(w_source,kernel_yB),[3 2 1]); v_yB= v_yB + v_yBt;
+            v_xBt= sum(bsxfun(@times,w_source,kernel_xB)); v_xB= v_xB + v_xBt;
+            v_yBt= sum(bsxfun(@times,w_source,kernel_yB)); v_yB= v_yB + v_yBt;
             %Form far field boundary velocities due to source, add to existing far field velocities.
             %Be sure to leave out near-field boundary velocities as these will be included in the 
             %whole element evals
@@ -115,10 +115,10 @@ for t=0:delt:EndTime %timestep
         %---Velocity eval ends---------------------------------------------   
     
         %---Advection------------------------------------------------------
-        w_lx= mtimesx(Ll',wx);          %Left interpolated vorticity
-        w_rx= mtimesx(Lr',wx);          %Right interpolated vorticity
-        w_bx= mtimesx(Ll',wy);          %Bottom interpolated vorticity
-        w_tx= mtimesx(Lr',wy);          %Top interpolated vorticity
+        w_lx= sum(bsxfun(@times,Ll,wx));          %Left interpolated vorticity
+        w_rx= sum(bsxfun(@times,Lr,wx));          %Right interpolated vorticity
+        w_bx= sum(bsxfun(@times,Ll,wy));          %Bottom interpolated vorticity
+        w_tx= sum(bsxfun(@times,Lr,wy));          %Top interpolated vorticity
         
         %Boundary fluxes
         if BCtype== 'NoInflow'

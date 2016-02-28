@@ -19,40 +19,32 @@ wy=   reshape(w,Np,1,[]);       %Reshape vorticity for mtimesx_y bsx
 srcx=wxm(Nnumy(:,1,Estreamy(:,end) )); %Generalized source location
 srcy=wym(Nnumy(:,1,Estreamy(:,end) ));
 %Calculate generalized kernel for boundary velocity points
+Rsqx= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
+Rsqy= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
+Mx= bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))/(2*pi);
+My= bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))/(2*pi);
 switch KernelType
 case 'BS'
-    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_xB= (1/(2*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./Rsq,[1 4 3 2]);
-    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_yB= (1/(2*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./Rsq,[1 4 3 2]);
+    gkernel_xB= permute(Mx./Rsq,[1 4 3 2]);
+    gkernel_yB= permute(My./Rsq,[1 4 3 2]);
 case 'WL'
-    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_xB= (1/(2*pi))*permute(( bsxfun(@minus,srcy(:),rv_xB(1,2,:,:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 4 3 2]);
-    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_yB= (1/(2*pi))*permute(( bsxfun(@minus,rv_yB(1,1,:,:),srcx(:)).*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 4 3 2]);
+    gkernel_xB= permute(( Mx.*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 4 3 2]);
+    gkernel_yB= permute(( My.*(Rsq+(2)*del^2) )./(Rsq+del^2).^(2),[1 4 3 2]);
 case 'SG'
-    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_xB= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(Rsq)).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 4 3 2]);
-    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_yB= (1/(2*pi))*permute( (bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(Rsq)).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 4 3 2]);
+    gkernel_xB= permute( (Mx./Rsq).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 4 3 2]);
+    gkernel_yB= permute( (My./Rsq).*(1-(1-Rsq/del^2).*exp(-Rsq/del^2)),[1 4 3 2]);
 case 'SG6'
-    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_xB= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(Rsq)).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 4 3 2]);
-    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_yB= (1/(2*pi))*permute( (bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(Rsq)).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 4 3 2]);
+    gkernel_xB= permute( (Mx./Rsq).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 4 3 2]);
+    gkernel_yB= permute( (My./Rsq).*(1-(1-2*Rsq/del^2+0.5*Rsq.^2/del^4).*exp(-Rsq/del^2)),[1 4 3 2]);
 case 'PS'
-    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_xB= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(Rsq)).*(1-besselj(0,sqrt(Rsq)/del)),[1 4 3 2]);
-    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_yB= (1/(2*pi))*permute( (bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(Rsq)).*(1-besselj(0,sqrt(Rsq)/del)),[1 4 3 2]);
+    gkernel_xB= permute( (Mx./Rsq).*(1-besselj(0,sqrt(Rsq)/del)),[1 4 3 2]);
+    gkernel_yB= permute( (My./Rsq).*(1-besselj(0,sqrt(Rsq)/del)),[1 4 3 2]);
 case 'PS2'
-    Rsq= sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_xB= (1/(2*pi))*permute( (bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(Rsq)).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 4 3 2]);
-    Rsq= sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2);
-    gkernel_yB= (1/(2*pi))*permute( (bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(Rsq)).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 4 3 2]);
-otherwise
-    gkernel_xB= (1/(2*pi))*permute(bsxfun(@minus,srcy(:),rv_xB(1,2,:,:))./(sum(bsxfun(@minus,rv_xB,[srcx(:),srcy(:)]).^2,2)+del^2),[1 4 3 2]);
-    gkernel_yB= (1/(2*pi))*permute(bsxfun(@minus,rv_yB(1,1,:,:),srcx(:))./(sum(bsxfun(@minus,rv_yB,[srcx(:),srcy(:)]).^2,2)+del^2),[1 4 3 2]);
+    gkernel_xB= permute( (Mx./Rsq).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 4 3 2]);
+    gkernel_yB= permute( (My./Rsq).*(1- (8./(45*Rsq/del^2)).*(4*besselj(2,4*sqrt(Rsq)/del)-5*besselj(2,2*sqrt(Rsq)/del)+besselj(2,sqrt(Rsq)/del))),[1 4 3 2]);
+    otherwise %RM
+    gkernel_xB= permute(Mx./(Rsqx+del^2),[1 4 3 2]);
+    gkernel_yB= permute(My./(Rsqy+del^2),[1 4 3 2]);
 end
 
 %% Near kernel and local params
