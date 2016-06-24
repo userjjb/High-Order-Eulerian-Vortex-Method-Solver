@@ -15,13 +15,13 @@ for yam=1:numel(tests)
     clearvars wxt tt
     
 filename=['5_',num2str(tests(yam)),'Gpt3PS2NR1_8.mat'];
-saveQ=1;                    %Save time history of state to file
+saveQ=0;                    %Save time history of state to file
 %---Global domain initialization (parameters)------------------------------
 B= 3*[-1 1 -1 1];           %left, right, bottom, top
 K= [tests(yam) tests(yam)]; %Num elements along x,y
 %Solver parameters
 delt= 1;                  %Timestep
-del=0;                      %Unused for BS kernel
+del=.3*((B(2)-B(1))/K(1)); %Unused for BS kernel
 N= 5;                       %Local vorticity poly order
 M= 5;                       %Local velocity poly order
 [RKa,RKb,RKc,nS]= LSRKcoeffs('NRK14C');
@@ -30,7 +30,7 @@ ThresholdMap= 1;            %Plot thresholding of elements
 EndTime=194.5;
 LogPeriod= uint64(1);
 BCtype= 'NoInflow';
-KernelType='BS';
+KernelType='PS2';
 ModKernelFile='Iwm55.mat';  %File containing modified kernel values
 NearRange=ceil(K(1)*(3/24)); %6th: 2/18<good enough<3/24, 10/18-full coupling (may be prob/order depend)
 TestCases=12:13;

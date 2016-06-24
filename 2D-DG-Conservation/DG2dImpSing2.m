@@ -12,7 +12,7 @@ tests=16;                   %Test parameter range to iterate over
 for yam=1:numel(tests)
     clearvars wxt tt
 filename=['5_',num2str(tests(yam)),'Gpt3PS2NR1_8.mat'];
-saveQ=1;                    %Save time history of state to file
+saveQ=0;                    %Save time history of state to file
 %---Global domain initialization (parameters)------------------------------
 B= 3.5*[-1 1 -1 1];         %left, right, bottom, top
 K= [tests(yam) tests(yam)]; %Num elements along x,y

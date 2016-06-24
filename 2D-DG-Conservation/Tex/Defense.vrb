@@ -12,7 +12,7 @@ for t=0:delt:EndTime %Step
         (semi-discrete calculations for advection)
         wx_dt= permute(Stiff_x-SurfFlux_x,[4 1 3 2]);
         wy_dt= reshape(reshape(...
-Stiff_y-SurfFlux_y,K(2),[])',Np,1,[]);
+	Stiff_y-SurfFlux_y,K(2),[])',Np,1,[]);
 
         k2= RKa(i)*k2 + delt*(wx_dt+wy_dt);
         wx= wx+RKb(i)*k2;
